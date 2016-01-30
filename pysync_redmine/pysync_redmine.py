@@ -29,7 +29,7 @@ class GanttProjectLoader:
         self.tree = ET.parse(file_name)
 
     def get_phases(self):
-        xml_phases = self.tree.find("tasks/task/*")
+        xml_phases = self.tree.find("./tasks/task[task]")
 
         phases = []
         for xml_phase in xml_phases:
