@@ -18,10 +18,10 @@ class A_ProjectLoader:
         assert len(phases) == 1
 
         phase = phases[0]
-        assert phase.description == "Version Description"
+        assert phase.description == "Version description"
         assert phase.id == 0
         assert phase.begin_date == dt.datetime(2016, 2, 3)
-        assert phase.due_date == dt.date(2016, 2, 12)
         assert phase.duration == 9
         assert phase.complete == 48
+        assert phase.due_date == dt.datetime(2016, 2, 12)
 

@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?><project name="example" company="Public and Free" webLink="http://sruiz.es" view-date="2016-01-28" view-index="0" gantt-divider-location="548" resource-divider-location="300" version="2.7.1" locale="es_ES">
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="example" company="Public and Free" webLink="http://sruiz.es" view-date="2016-01-28" view-index="0" gantt-divider-location="548" resource-divider-location="300" version="2.7.1" locale="es_ES">
     <description><![CDATA[This an example of project from GanntProject release 2.7]]></description>
     <view zooming-state="default:3" id="gantt-chart">
         <field id="tpd3" name="Nombre" width="46" order="0"/>
