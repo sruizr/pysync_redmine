@@ -37,11 +37,11 @@ class GanttProjectLoader:
                 phase = Phase()
                 phase.id = int(xml_phase.attrib["id"])
                 phase.description = xml_phase.attrib['name']
-                phase.begin_date = dt.datetime.strptime(
+                phase.start_date = dt.datetime.strptime(
                                                xml_phase.attrib["start"],
-                                               "%Y-%m-%d")
+                                               "%Y-%m-%d").date()
                 phase.duration = int(xml_phase.attrib["duration"])
-                phase.due_date = phase.begin_date + \
+                phase.due_date = phase.start_date + \
                                             dt.timedelta(days=phase.duration)
                 phases.append(phase)
                 phase.complete = int(xml_phase.attrib["complete"])
