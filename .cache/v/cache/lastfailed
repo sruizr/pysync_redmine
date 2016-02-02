@@ -1,1 +1,3 @@
-{}
+{
+  "test/test_pysync_redmine.py::A_ProjectLoader::()::should_get_all_tasks_from_a_phase": true
+}

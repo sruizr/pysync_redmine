@@ -10,7 +10,8 @@ import pdb
 class A_ProjectLoader:
 
     def setup_method(self, method):
-        self.loader = GanttProjectLoader("test/resources/example.gan")
+        loader = GanttProjectLoader("test/resources/example.gan")
+        self.project = loader.parse()
 
     def should_load_all_phases(self):
         phases = self.loader.get_phases()
