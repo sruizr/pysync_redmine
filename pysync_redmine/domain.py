@@ -5,18 +5,19 @@ import pdb
 class Project:
 
     def __init__(self, calendar=None):
-        self.items = {}
+        self.items = set()
         self.members = {}
         self.phases = {}
         if calendar is None:
             calendar = Calendar()
         self.calendar = calendar
         self.tasks = {}
+        self._snapshot = {}
 
 
 class Task:
 
-    def __init__(self, project):
+    def __init__(self, project, phase=None):
         self._id = None
         self.description = None
         self.project = project
@@ -29,10 +30,19 @@ class Task:
         self.parent = None
         self.subtasks = []
         self.precedes = []
-        self.follows =[]
+        self.follows = []
+        self.inputs = []
+        self.outputs = []
+
+    def snap(self):
+        self.snapshot = self.__dict__
 
     def save(self):
-        self.project._save_task(self)
+        self.project.save(self)
+        self.snap()
+
+    def __str__(self):
+        return '{}: {}'.format(self._id, self.description)
 
 
 class Milestone(Task):
@@ -44,11 +54,15 @@ class Phase(Task):
     def __init__(self, project):
         Task.__init__(self, project)
         self.due_date = None
+        self.tasks = []
 
 
-class Resource:
-    def __init__(self, key):
+class Member:
+    def __init__(self, key, *roles):
         self.key = key
+        if not roles:
+            roles = []
+        self.roles = set(roles)
 
 
 class Calendar:
