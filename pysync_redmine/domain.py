@@ -1,18 +1,66 @@
 import datetime
+from abc import ABCMeta, abstractmethod
 import pdb
+
+
+class Repository:
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self):
+        pass
+
+    def close_source(self):
+        if hasattr(self, 'source'):
+            del self.source
+
+    @abstractmethod
+    def open_project(self, **kwars): pass
+
+    @abstractmethod
+    def members(self, project): pass
+
+    @abstractmethod
+    def members(self, project): pass
+
+    @abstractmethod
+    def phases(self, project): pass
+
+    @abstractmethod
+    def tasks(self, project): pass
+
+    @abstractmethod
+    def items(self, project): pass
+
+    @abstractmethod
+    def project(self, key): pass
+
+    @abstractmethod
+    def save_task(self, task): pass
+
+    @abstractmethod
+    def save_phase(self, phase): pass
+
+    @abstractmethod
+    def save_item(self, item, project): pass
 
 
 class Project:
 
-    def __init__(self, calendar=None):
-        self.items = set()
-        self.members = {}
-        self.phases = {}
-        if calendar is None:
-            calendar = Calendar()
-        self.calendar = calendar
-        self.tasks = {}
-        self._snapshot = {}
+    def __init__(self, key, repository=None):
+        self.key = key
+        self.repository = repository
+        self.load()
+
+    def load(self):
+        if self.repository:
+            self.repository.open_project(self.key)
+            self.calendar = self.repository.calendar()
+            self.members = self.repository.members()
+            self.phases = self.repository.phases()
+            self.tasks = self.repository.tasks()
+            self.items = self.repository.items()
+            self.repository.close_project(self.key)
 
 
 class Task:
@@ -38,8 +86,7 @@ class Task:
         self.snapshot = self.__dict__
 
     def save(self):
-        self.project.save(self)
-        self.snap()
+        self.project.repository.save_task(self)
 
     def __str__(self):
         return '{}: {}'.format(self._id, self.description)

@@ -1,132 +1,11 @@
-import datetime
-import xml.etree.ElementTree as ET
-from pysync_redmine.domain import (Project,
+import redmine
+from redmine.exceptions import ResourceAttrError
+from pysync_redmine.domain import (Repository,
+                                   Project,
                                    Member,
                                    Task,
                                    Phase,
                                    Calendar)
-import redmine
-from redmine.exceptions import ResourceAttrError
-import pdb
-
-
-class GanttProject(Project):
-
-    def __init__(self, file_name):
-        Project.__init__(self)
-        self.filename = file_name
-
-        self.load()
-
-    def load(self):
-        root = ET.parse(self.filename).getroot()
-
-        input_property = root.find("./tasks/taskproperties/taskproperty[@name='inputs']")
-        if input_property is not None:
-            self.input_id = input_property.attrib['id']
-
-        output_property = root.find("./tasks/taskproperties/taskproperty[@name='outputs']")
-        if output_property is not None:
-            self.output_id = input_property.attrib['id']
-
-        resources = root.findall('./resources/resource')
-        functions = root.findall('./roles/role')
-        for resource in resources:
-            self._load_member(resource, functions)
-
-        calendar = root.find('./calendars')
-        self._load_calendar(calendar)
-
-        tasks = root.findall('.//task')
-        for task in tasks:
-            self._load_task(task)
-
-        allocations = root.findall('./allocations/allocation')
-        for allocation in allocations:
-            self._load_assigned_to(allocation)
-
-        phases = root.findall('./tasks/task[task]')
-        for phase in phases:
-            self._load_phase(phase)
-
-        # link tasks
-        tasks = root.findall('./tasks/task/task')
-        for xml_task in tasks:
-            self._update_links(xml_task)
-
-
-    def _load_member(self, xml_resource, xml_functions):
-        role = xml_resource.attrib['function']
-        for function in xml_functions:
-            if function.attrib['id'] == role:
-                role = function.attrib['name']
-                break
-        member = Member(xml_resource.attrib['name'], role)
-        self.members[int(xml_resource.attrib['id'])] = member
-
-    def _load_calendar(self, xml_calendar):
-        self.calendar = Calendar()
-
-    def _load_task(self, xml_task):
-
-        task = Task(self)
-        task._id = int(xml_task.attrib['id'])
-        task.description = xml_task.attrib['name']
-        task.start_date = datetime.datetime.strptime(
-                                                     xml_task.attrib['start'],
-                                                     '%Y-%m-%d').date()
-        task.duration = int(xml_task.attrib['duration'])
-        task.complete = int(xml_task.attrib['complete'])
-
-        self.tasks[task._id] = task
-
-    def _load_assigned_to(self, xml_allocation):
-        task = self.tasks[int(xml_allocation.attrib['task-id'])]
-        member = self.members[int(xml_allocation.attrib['resource-id'])]
-        task.assigned_to = member
-
-    def _load_phase(self, xml_phase):
-        phase_id = int(xml_phase.attrib['id'])
-        phase = self.tasks.pop(phase_id)
-        self.phases[phase_id] = phase
-
-        self._update_phase(phase, xml_phase)
-
-    def _update_phase(self, phase, xml):
-        for child in xml:
-            if child.tag == 'task':
-                task = self.tasks[int(child.attrib['id'])]
-                task.phase = phase
-                self._update_phase(phase, child)
-
-    def _update_links(self, xml):
-        task = self.tasks[int(xml.attrib['id'])]
-        for child in xml:
-            if child.tag == 'task':
-                subtask = self.tasks[int(child.attrib['id'])]
-                subtask.parent = task
-                task.subtasks.append(subtask)
-                self._update_links(child)
-            if child.tag == 'depend':
-                next_task = self.tasks[int(child.attrib['id'])]
-                next_task.follows.append(task)
-                task.precedes.append(next_task)
-            if child.tag == 'customproperty':
-                if child.attrib['taskproperty-id'] == self.input_id:
-                    task.inputs = self._get_tokens(child.attrib['value'])
-                if child.attrib['taskproperty-id'] == self.output_id:
-                    task.outputs = self._get_tokens(child.attrib['value'])
-
-    def _get_tokens(self, token_string):
-        tokens = token_string.split(',')
-        result = []
-        for token in tokens:
-            token = token.strip()
-            token = token.split('//')
-            self.items.add(token[0])
-            result.append(token)
-
-        return result
 
 
 class ResourceWrapper:
@@ -156,7 +35,7 @@ class ResourceWrapper:
         return getattr(self, item)
 
 
-class RedmineProject(Project):
+class RedmineRepo(Repository):
 
     def __init__(self, project_url, user_key, psw):
         Project.__init__(self)
