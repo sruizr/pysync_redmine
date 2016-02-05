@@ -54,18 +54,30 @@ class Project:
 
     def load(self):
         if self.repository:
-            self.repository.open_project(self.key)
-            self.calendar = self.repository.calendar()
-            self.members = self.repository.members()
-            self.phases = self.repository.phases()
-            self.tasks = self.repository.tasks()
-            self.items = self.repository.items()
-            self.repository.close_project(self.key)
+            self.repository.open_source()
+            self.repository.load_calendar(self)
+            self.repository.load_members(self)
+            self.repository.load_phases(self)
+            self.repository.load_tasks(self)
+            self.repository.close_source()
 
 
-class Task:
+class Persistent:
+    def __init__(self, repository=None):
+        self.snapshot = {}
+        self.repository = repository
+
+    def snap(self):
+        self.snapshot = self.__dict__
+
+    def save(self):
+        self.repository.save(self)
+
+
+class Task(Persistent):
 
     def __init__(self, project, phase=None):
+        super().__init__()
         self._id = None
         self.description = None
         self.project = project
@@ -82,37 +94,43 @@ class Task:
         self.inputs = []
         self.outputs = []
 
-    def snap(self):
-        self.snapshot = self.__dict__
-
-    def save(self):
-        self.project.repository.save_task(self)
-
     def __str__(self):
-        return '{}: {}'.format(self._id, self.description)
+
+        result =
+"""{}:{}
+start date: {}
+duration: {}
+assigned to: {}""".format(
+                                      self._id,
+                                      self.description,
+                                      self.start_date,
+                                      self.duration,
+                                      self.assigned_to.key
+                                      )
 
 
 class Milestone(Task):
     def __init__(self):
-        Task.__init__(self)
+        super().__init__()
 
 
 class Phase(Task):
     def __init__(self, project):
-        Task.__init__(self, project)
+        super().__init__(project)
         self.due_date = None
         self.tasks = []
 
 
-class Member:
+class Member(Persistent):
     def __init__(self, key, *roles):
+        super().__init__()
         self.key = key
         if not roles:
             roles = []
         self.roles = set(roles)
 
 
-class Calendar:
+class Calendar(Persistent):
     def __init__(self, weekend=['sat', 'sun']):
             self.weekend = weekend
             self.free_days = []
