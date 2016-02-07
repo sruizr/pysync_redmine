@@ -6,6 +6,7 @@ from pysync_redmine.domain import (Repository,
                                    Task,
                                    Phase,
                                    Calendar)
+import getpass
 
 
 class ResourceWrapper:
@@ -37,8 +38,13 @@ class ResourceWrapper:
 
 class RedmineRepo(Repository):
 
-    def __init__(self, project_url, user_key, psw):
+    def __init__(self, project_url, user_key=None, psw=None):
         Project.__init__(self)
+
+        if user_key is None:
+            user_key = input("Enter your redmine user key:")
+        if psw is None:
+            psw = getpass.getpass("Enter your password:")
 
         paths = project_url.split('/')
         project_key = paths.pop(-1)
@@ -154,3 +160,5 @@ class RedmineRepo(Repository):
         if id not in self.phases:
             pass
 
+
+    def copy_member

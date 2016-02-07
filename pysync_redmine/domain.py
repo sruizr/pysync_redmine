@@ -7,7 +7,7 @@ class Repository:
 
     __metaclass__ = ABCMeta
 
-    def __init__(self):
+    def __init__(self,**kwargs):
         pass
 
     def close_source(self):
@@ -15,7 +15,7 @@ class Repository:
             del self.source
 
     @abstractmethod
-    def open_project(self, **kwars): pass
+    def open_project(self, **kwargs): pass
 
     @abstractmethod
     def members(self, project): pass
@@ -34,6 +34,7 @@ class Repository:
 
     @abstractmethod
     def project(self, key): pass
+
 
     @abstractmethod
     def save_task(self, task): pass
@@ -64,6 +65,8 @@ class Project:
 
 class Persistent:
     def __init__(self, repository=None):
+        self._id = None
+        self.last_update = None
         self.snapshot = {}
         self.repository = repository
 
@@ -78,7 +81,6 @@ class Task(Persistent):
 
     def __init__(self, project, phase=None):
         super().__init__()
-        self._id = None
         self.description = None
         self.project = project
         self.start_date = None
