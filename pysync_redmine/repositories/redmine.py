@@ -51,16 +51,11 @@ class RedmineRepo(Repository):
         url = '/'.join(paths[0:-1])
         self.redmine = redmine.Redmine(url, username=user_key, password=psw)
 
-        project = self.redmine.project.get(project_key)
+        self.project = self.redmine.project.get(project_key)
         self._id = project.id
         self.key = project_key
         self.description = project.name
 
-        users = self.redmine.user.all()
-        for member in project.memberships:
-            user = users.get(member.user.id)
-            project_roles = [r.name for r in member.roles]
-            self._load_member(user, project_roles)
 
         for version in project.versions:
             self._load_phase(version)
@@ -89,7 +84,9 @@ class RedmineRepo(Repository):
         for phase in self.phases:
             phase.snap()
 
-    def _load_task(self, issue):
+    def open_source(self, )
+
+    def load_tasks(self, issue):
         issue = ResourceWrapper(issue, "issue")
         task = self.new_task()
         task._id = issue.id
@@ -105,10 +102,17 @@ class RedmineRepo(Repository):
 
         self.tasks[task._id] = task
 
-    def _load_member(self, user, roles):
+    def load_members(self, user, roles):
+        users = self.redmine.user.all()
+        for member in project.memberships:
+            user = users.get(member.user.id)
+            project_roles = [r.name for r in member.roles]
+            self._load_member(user, project_roles)
+
         self.members[user.id] = (user.login, roles)
 
-    def _load_phase(self, version):
+    def load_phases(self, ):
+
         phase = Phase(self)
         version = ResourceWrapper(version, 'version')
         phase._id = version.id
@@ -160,5 +164,102 @@ class RedmineRepo(Repository):
         if id not in self.phases:
             pass
 
+    def copy_task(self, task):
+        issue = self.redmine.issues.new()
+        issue.subject = task.description
+        issue.project_id = task.project._id
+        issue.start_date = task.start_date
+        issue.due_date = task.project.calendar.get_due_date(task.start_date,
+                                                            task.duration)
+        issue.done_ratio = task.complete
+        issue.save()
 
-    def copy_member
+        return self._get_task(issue, task.project)
+
+    def _get_task(self, issue, project):
+        task = Task(project)
+        task._id = issue.id
+        task.description = issue.
+
+    def insert_task(self, task):
+        issue = self.redmine.issue.new()
+        issue.subject = task.description
+        issue.project_id = task.project._id
+        issue.start_date = task.start_date
+        issue.due_date = task.project.calendar.get_due_date(task.start_date,
+                                                            task.duration)
+        issue.done_ratio = task.complete
+        issue.save()
+
+        task._id = issue.id
+
+    def insert_phase(self, phase):
+        version = self.redmine.version.new()
+        version.project_id = phase.project.key
+        version.name = phase.key
+        version.description = phase.description
+        version.due_date = phase.due_date
+        version.save()
+
+        phase._id = version.id
+
+    def insert_member(self, member):
+        user = self.redmine.user.filter(name=member.key)[0]
+        roles = self.redmine.role.all()
+        role_ids = []
+        for role in roles:
+                if role.name in member.roles:
+                    role_ids.append(role.id)
+
+        project_membership = self.redmine.project_membership.create(
+                                                            member.project.key
+                                                            user.id, role_ids)
+
+        member._id = user.id
+
+    def update_task(self, task):
+
+        resource_id = task._id
+        fields = {}
+
+        if task.descriptoin != task.snapshot['description']:
+            fields['subject'] = task.description
+
+        if task.start_date != task.snapshot['start_date']:
+            fields['start_date'] = task.start_date
+
+        if (task.duration != task.snapshot['duration'] or
+                task.start_date != task.snapshot['start_date']):
+            fields['due_date'] = task.project.calendar.get_due_date(
+                                                            task.start_date,
+                                                            task.duration)
+
+        if task.complete != task.snapshot['complete']:
+            fields['done_ratio'] = task.complete
+
+        if task.parent != task.snapshot['_parent']:
+            fields['parent_issue_id'] = task.parent._id
+
+        if (task.assigned_to != task.snapshot['assigned_to'] and
+                task.assigned_to is not None):
+            fields['assigned_to_id'] = task.assigned_to._id
+
+        if (task.phase != task.snapshot['_phase'] and
+            task.phase is not None):
+            fields['fixed_version_id'] = task.phase,._id
+
+        #Update relations
+        relations = self.redmine.issue_relation.filter(issue_id=)
+        if task.relations != task.snapshot['relations']:
+            for relation in task.relations:
+                if relation.from_task == task:
+                    self.redmine.issue_relation.create(task._id,
+                                                       relation.to_task._id,
+                                                       'preceeds')
+
+    def update_member(self, member):
+        pass
+
+    def update_phase(self, phase):
+        pass
+
