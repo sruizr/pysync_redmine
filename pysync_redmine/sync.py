@@ -59,4 +59,5 @@ class Syncronizer:
             new_task = destination.copy_task(task)
             self.sync_data['tasks'].append((task._id, new_task._id))
 
-        destination.update_relations(origin)
+        #Setting phases
+
