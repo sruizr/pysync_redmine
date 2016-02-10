@@ -5,7 +5,9 @@ from pysync_redmine.domain import (Repository,
                                    Member,
                                    Task,
                                    Phase,
-                                   Calendar)
+                                   Calendar,
+                                   SequenceRelation)
+import pdb
 
 
 class GanttRepo(Repository):
@@ -13,10 +15,13 @@ class GanttRepo(Repository):
     def __init__(self, filename=None):
         Repository.__init__(self)
         if filename:
-            self.open_source(filename)
+            self.filename = filename
 
-    def open_source(self, filename):
-        self.source = ET.parse(filename).getself.source()
+    def open_source(self, filename=None):
+        if filename:
+            self.filename = filename
+
+        self.source = ET.parse(self.filename)
 
     def load_members(self, project):
         members = {}
@@ -32,13 +37,13 @@ class GanttRepo(Repository):
             members[int(resource.attrib['id'])] = member
             member.snap()
 
-        return members
+        project.members = members
 
     def load_calendar(self, project):
-        return Calendar()
+        project.calendar = Calendar()
 
     def load_phases(self, project):
-        project.phases = {}
+        phases = {}
         resources = self.source.findall('./tasks/task[task]')
 
         for resource in resources:
@@ -53,14 +58,16 @@ class GanttRepo(Repository):
                                                start_date,
                                                int(resource.attrib['duration'])
                                                )
-            project.phases[phase_id] = phase
+            phases[phase_id] = phase
             phase.snap()
 
+        project.phases = phases
+
     def load_tasks(self, project):
-        project.tasks = {}
+        tasks = {}
         resources = self.source.findall('./tasks//task')
         for resource in resources:
-            if int(resource.attrib['id']) not in self.project.phases:
+            if int(resource.attrib['id']) not in project.phases:
                 task = Task(self)
                 task._id = int(resource.attrib['id'])
                 task.description = resource.attrib['name']
@@ -69,50 +76,51 @@ class GanttRepo(Repository):
                                                     '%Y-%m-%d').date()
                 task.duration = int(resource.attrib['duration'])
                 task.complete = int(resource.attrib['complete'])
-                project.tasks[task_id] = task_id
+                tasks[task._id] = task
+        project.tasks = tasks
 
-        for resources in resource:
-            if int(resource.attrib['id']) not in self.project.phases:
+        for resource in resources:
+            if int(resource.attrib['id']) not in project.phases:
                 task = project.tasks[int(resource.attrib['id'])]
                 for child in resource:
                     if child.tag == 'task':
-                        subtask = self.tasks[int(child.attrib['id'])]
+                        subtask = project.tasks[int(child.attrib['id'])]
                         subtask.parent = task
-                        task.subtasks.append(subtask)
                     if child.tag == 'depend':
-                        next_task = self.tasks[int(child.attrib['id'])]
-                        next_task.follows.append(task)
-                    if child.tag == 'customproperty':
-                        if child.attrib['taskproperty-id'] == self.input_id:
-                            task.inputs = self._get_tokens(
-                                                           child.attrib['value']
-                                                           )
-                        if child.attrib['taskproperty-id'] == self.output_id:
-                            task.outputs = self._get_tokens(
-                                                            child.attrib['value']
-                                                            )
+                        next_task = project.tasks[int(child.attrib['id'])]
+                        SequenceRelation(task, next_task)
+                    # if child.tag == 'customproperty':
+                    #     if child.attrib['taskproperty-id'] == self.input_id:
+                    #         task.inputs = self._get_tokens(
+                    #                                        child.attrib['value']
+                    #                                        )
+                    #     if child.attrib['taskproperty-id'] == self.output_id:
+                    #         task.outputs = self._get_tokens(
+                    #                                         child.attrib['value']
+                    #                                         )
 
         resources = self.source.findall('./allocations/allocation')
         for resource in resources:
-            task = project.tasks[int(xml_allocation.attrib['task-id'])]
+            task = project.tasks[int(resource.attrib['task-id'])]
             member = project.members[int(
-                                         xml_allocation.attrib['resource-id']
+                                         resource.attrib['resource-id']
                                          )]
             task.assigned_to = member
 
-        for phase in project.phases:
+        for phase in project.phases.values():
             resources = self.source.findall(
-                                    "./tasks/task[@id='{}]'//task".format(
+                                    "./tasks/task[@id='{}']//task".format(
                                                                           phase._id
                                                                           )
                                     )
             for resource in resources:
-                task = projects.tasks[int(resource.attrib['id'])]
+                task = project.tasks[int(resource.attrib['id'])]
                 task.phase = phase
                 phase.tasks.append(task)
 
-        for task in project.tasks:
+        for task in project.tasks.values():
             task.snap()
+
 
     def _get_tokens(self, token_string):
         tokens = token_string.split(',')
@@ -124,4 +132,3 @@ class GanttRepo(Repository):
             result.append(token)
 
         return result
-

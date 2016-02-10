@@ -1,6 +1,12 @@
 import json
 import click
 import pysync_redmine.repositories as repos
+from pysync_redmine.domain import (
+                                    SequenceRelation,
+                                    Task,
+                                    Member,
+                                    Phase,
+                                    )
 
 
 @click.command()
@@ -48,16 +54,75 @@ class Syncronizer:
             self.projects.append(destination)
 
         for member in origin.members:
-            new_member = destination.copy_member(member)
+            new_member = self.copy_member(member, destination)
+            new_member.save()
             self.sync_data['members'].append((member._id, new_member. _id))
+        member_map = {
+                value[0]: value[1] for value in self.sync_data['members']
+                }
 
         for phase in origin.phases:
-            new_phase = destination.copy_phase(phase)
+            new_phase = self.copy_phase(phase, destination)
+            new_phase.save()
             self.sync_data['phases'].append((phase._id, new_phase._id))
+        phase_map = {
+            value[0]: value[1] for value in self.sync_data['phases']
+            }
 
         for task in origin.tasks:
-            new_task = destination.copy_task(task)
+            new_task = self.copy_task(task, destination)
+            new_task.save()
             self.sync_data['tasks'].append((task._id, new_task._id))
+        task_map = {
+            value[0]: value[1] for value in self.sync_data['tasks']
+            }
 
-        #Setting phases
+        for task in origin.tasks:
+            destination_task = destination.tasks[task_map[task._id]]
 
+            destination_task.assigned_to = destination.members[
+                                                    member_map[
+                                                        task.assigned_to._id
+                                                        ]
+                                                    ]
+            destination_task.phase = destination.phases[
+                                                    phase_map[
+                                                        task.phase._id
+                                                        ]
+                                                    ]
+            destination_task.parent = destination.tasks[
+                                                    task_map[
+                                                        task.parent._id
+                                                        ]
+                                                    ]
+            for next_task, delay in task.nexts:
+                dest_next_task = destination.tasks[
+                                                task_map[
+                                                    next_task._id]
+                                                ]
+                destination_task.relations.add_next(dest_next_task, delay)
+
+            destination_task.save()
+
+    def copy_task(self, task, project_destination):
+        new_task = Task(project_destination)
+        new_task.description = task.description
+        new_task.start_date = task.start_date
+        new_task.duration = task.duration
+        new_task.complete = task.complete
+
+        return new_task
+
+    def copy_phase(self, phase, project_destination):
+        new_phase = Phase(project_destination)
+        new_phase.due_date = phase.due_date
+        new_phase.description = phase.description
+        new_phase.key = phase.key
+
+        return new_phase
+
+    def copy_member(self, member, project_destination):
+        roles = member.roles.copy()
+        new_member = Member(member.key, project_destination, *roles)
+
+        return new_member
