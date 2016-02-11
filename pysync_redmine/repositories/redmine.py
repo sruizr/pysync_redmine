@@ -212,7 +212,7 @@ class RedmineRepo(Repository):
             if next_task in current_relations:
                 if delay != current_relations[next_task].delay:
                     self.redmine.issue_relation.delete(
-                                               current.relations[next_task].id
+                                               current_relations[next_task].id
                                                )
                     self.redmine.issue_relation.create(issue_id=task._id,
                                                        issue_to_id=next_task._id,
@@ -224,10 +224,11 @@ class RedmineRepo(Repository):
                                                    relation_type='precedes',
                                                    delay=delay)
 
-        # pdb.set_trace()
-        for relation in current_relations:
-            if relation not in task.relations.next_tasks:
-                self.redmine.issue_relation.delete(relation._id)
+
+        # delete
+        for next_task, relation in current_relations.items():
+            if next_task not in task.relations.next_tasks:
+                self.redmine.issue_relation.delete(relation.id)
 
     def update_member(self, member):
         pass

@@ -230,7 +230,7 @@ class A_RedmineRepo:
 
         self.repo.update_task(main_task)
 
-        pars={
+        pars = {
             'subject': 'Final description',
             'start_date': main_task.start_date,
             'due_date': datetime.date(2016, 1, 8),
@@ -251,7 +251,39 @@ class A_RedmineRepo:
                                                         **pars)
 
     def should_update_tasks_with_removed_next_tasks(self):
+        phase, member, parent, main_task, next_task = self.get_basic_frame()
+
+        mock_relation = Mock()
+        mock_relation.id = 1000
+        mock_relation.issue_to_id = next_task._id
+        mock_relation.relation_type = 'precedes'
+        self.redmine.issue_relation.filter.return_value = [mock_relation]
 
         self.repo.update_task(main_task)
 
-        assert self.redmine.issue_relation.delete.assert_called_with(1000)
+        self.redmine.issue_relation.delete.assert_called_with(mock_relation.id)
+
+    def should_update_tasks_with_changed_delays(self):
+        phase, member, parent, main_task, next_task = self.get_basic_frame()
+
+        main_task.relations.add_next(next_task, 1)
+
+        mock_relation = Mock()
+        mock_relation.id = 1000
+        mock_relation.issue_to_id = next_task._id
+        mock_relation.relation_type = 'precedes'
+        mock_relation.delay = 0
+        self.redmine.issue_relation.filter.return_value = [mock_relation]
+
+        self.repo.update_task(main_task)
+
+        self.redmine.issue_relation.delete.assert_called_with(mock_relation.id)
+        pars = {
+            'issue_id': main_task._id,
+            'issue_to_id': next_task._id,
+            'relation_type': 'precedes',
+            'delay': 1
+            }
+        self.redmine.issue_relation.create.assert_called_with(
+                                                        **pars)
+
