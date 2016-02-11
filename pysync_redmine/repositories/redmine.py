@@ -7,6 +7,7 @@ from pysync_redmine.domain import (Repository,
                                    Phase,
                                    Calendar)
 import getpass
+import pdb
 
 
 class ResourceWrapper:
@@ -163,14 +164,14 @@ class RedmineRepo(Repository):
                                                             user_id=user.id,
                                                             roles_ids=role_ids)
 
-        member._id = project_membership.id
+        member._id = user.id
 
     def update_task(self, task):
 
         resource_id = task._id
         fields = {}
 
-        if task.descriptoin != task.snapshot['description']:
+        if task.description != task.snapshot['description']:
             fields['subject'] = task.description
 
         if task.start_date != task.snapshot['start_date']:
@@ -178,7 +179,7 @@ class RedmineRepo(Repository):
 
         if (task.duration != task.snapshot['duration'] or
                 task.start_date != task.snapshot['start_date']):
-            fields['due_date'] = task.project.calendar.get_due_date(
+            fields['due_date'] = task.project.calendar.get_end_date(
                                                             task.start_date,
                                                             task.duration)
 
@@ -188,7 +189,7 @@ class RedmineRepo(Repository):
         if task.parent != task.snapshot['_parent']:
             fields['parent_issue_id'] = task.parent._id
 
-        if (task.assigned_to != task.snapshot['assigned_to'] and
+        if (task.assigned_to != task.snapshot['_assigned_to'] and
                 task.assigned_to is not None):
             fields['assigned_to_id'] = task.assigned_to._id
 
@@ -196,7 +197,7 @@ class RedmineRepo(Repository):
                 task.phase is not None):
             fields['fixed_version_id'] = task.phase._id
 
-        self.redmine.issues.update(resource_id, **fields)
+        self.redmine.issue.update(resource_id, **fields)
 
         # Updating relations directly from repository
 
@@ -207,7 +208,7 @@ class RedmineRepo(Repository):
             if relation.relation_type == 'precedes':
                 current_relations[tasks[relation.issue_to_id]] = relation
 
-        for next_task, delay in task.relations.next_tasks:
+        for next_task, delay in task.relations.next_tasks.items():
             if next_task in current_relations:
                 if delay != current_relations[next_task].delay:
                     self.redmine.issue_relation.delete(
@@ -223,11 +224,10 @@ class RedmineRepo(Repository):
                                                    relation_type='precedes',
                                                    delay=delay)
 
+        # pdb.set_trace()
         for relation in current_relations:
-            if tasks[relation.issue_to_id] not in task.relations.next_tasks:
-                self.redmine.issue_relation.delete(relation.id)
-
-        task.snap()
+            if relation not in task.relations.next_tasks:
+                self.redmine.issue_relation.delete(relation._id)
 
     def update_member(self, member):
         pass

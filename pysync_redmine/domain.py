@@ -45,12 +45,14 @@ class Repository:
 
 class Project:
 
-    def __init__(self, key, calendar=None):
+    def __init__(self, key, repository=None, calendar=None):
         self.key = key
 
         if calendar is None:
             calendar = Calendar()
         self.calendar = calendar
+
+        self.repository = repository
 
         self.tasks = {}
         self.phases = {}
@@ -75,12 +77,12 @@ class Project:
 
 
 class Persistent:
-    def __init__(self, repository=None):
+    def __init__(self, project):
         self._id = None
         self.last_update = None
         self.snapshot = {}
-        self.repository = repository
-        self.project = None
+        self.repository = project.repository
+        self.project = project
 
     def _snap(self):
         self.snapshot = self.__dict__.copy()
@@ -102,7 +104,7 @@ class Persistent:
 
         method = getattr(repository, method_name)
         method(self)
-        if container:  # Inserted!
+        if container is not None:  # Inserted!
             container[self._id] = self
 
         self._snap()
@@ -123,9 +125,8 @@ class RelationSet:
 class Task(Persistent):
 
     def __init__(self, project, phase=None):
-        super().__init__()
+        super().__init__(project)
         self.description = None
-        self.project = project
         self.start_date = None
         self.duration = None
         self.complete = None
@@ -208,7 +209,7 @@ class Phase(Task):
 
 class Member(Persistent):
     def __init__(self, project, key, *roles):
-        super().__init__()
+        super().__init__(project)
         self.key = key
         self.project = project
         if not roles:

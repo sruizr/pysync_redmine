@@ -1,1 +1,3 @@
-{}
+{
+  "test/repositories/test_redmine.py::A_RedmineRepo::()::should_update_tasks_with_removed_next_tasks": true
+}

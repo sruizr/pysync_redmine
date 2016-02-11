@@ -125,7 +125,7 @@ class A_RedmineRepo:
         }
         self.redmine.project_membership.create.assert_called_with(
                                                                   **pars)
-        assert member._id == 3
+        assert member._id == 456
 
     def should_insert_phase(self):
         phase = Phase(self.project)
@@ -173,9 +173,85 @@ class A_RedmineRepo:
         self.redmine.issue.create.assert_called_with(**pars)
         assert task._id == 5
 
-    def should_update_task(self):
-        pass
+    def get_basic_frame(self):
+        mock_repository = Mock()
+        self.project.repository = mock_repository
 
+        phase = Phase(self.project)
+        phase._id = 2
+        phase.save()
 
+        member = Member(self.project, 'member_key')
+        member._id = 5
+        member.save()
 
+        main_task = Task(self.project)
+        main_task.description = 'Initial description'
+        main_task.start_date = datetime.date(2016, 1, 4)
+        main_task.duration = 2
+        main_task.complete = 75
+        main_task._id = 1
+        main_task.save()
 
+        parent = Task(self.project)
+        parent.description = 'parent description'
+        parent.start_date = datetime.date(2016, 1, 4)
+        parent.duration = 1
+        parent.complete = 100
+        parent._id = 2
+        parent.save()
+
+        next_task = Task(self.project)
+        next_task.description = 'next_task description'
+        next_task.start_date = datetime.date(2016, 1, 4)
+        next_task.duration = 1
+        next_task.complete = 100
+        next_task._id = 3
+        next_task.save()
+
+        return (phase, member, parent, main_task, next_task)
+
+    def should_update_task_update_main_fields_and_new_nexts(self):
+
+        phase, member, parent, main_task, next_task = self.get_basic_frame()
+
+        # Updating changes
+        main_task.description = 'Final description'
+        main_task.start_date = datetime.date(2016, 1, 5)
+        main_task.duration = 3
+        main_task.complete = 100
+        main_task.assigned_to = member
+        main_task.phase = phase
+        main_task.parent = parent
+
+        main_task.relations.add_next(next_task, 0)
+
+        self.redmine.issue_relation.filter.return_value = []
+
+        self.repo.update_task(main_task)
+
+        pars={
+            'subject': 'Final description',
+            'start_date': main_task.start_date,
+            'due_date': datetime.date(2016, 1, 8),
+            'done_ratio': 100,
+            'fixed_version_id': phase._id,
+            'assigned_to_id': member._id,
+            'parent_issue_id': parent._id,
+        }
+        self.redmine.issue.update.assert_called_with(1, **pars)
+
+        pars = {
+            'issue_id': main_task._id,
+            'issue_to_id': next_task._id,
+            'relation_type': 'precedes',
+            'delay': 0
+            }
+        self.redmine.issue_relation.create.assert_called_with(
+                                                        **pars)
+
+    def should_update_tasks_with_removed_next_tasks(self):
+
+        self.repo.update_task(main_task)
+
+        assert self.redmine.issue_relation.delete.assert_called_with(1000)
