@@ -9,6 +9,7 @@ from pysync_redmine.domain import (
                                     )
 import pdb
 
+
 @click.command()
 @click.option('--file', prompt='Enter path of project file',
               help='Filename of GanntProject')
@@ -37,8 +38,8 @@ def gantt_to_redmine(filename, project_url, user_key, psw):
 
 
 @click.command()
-@click.option('--sync_file', prompt='Enter your sync_file to load:', help=
-              'Filename .json with sync data')
+@click.option('--sync_file', prompt='Enter your sync_file to load:',
+              help='Filename .json with sync data')
 def sync_projects(sync_data_file):
     pass
 

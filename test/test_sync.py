@@ -10,7 +10,7 @@ from pysync_redmine.domain import (
                                    )
 import pysync_redmine.repositories as repos
 from pysync_redmine.sync import Syncronizer
-
+import pdb
 
 def test_sync_red_ganttproject():
     pass
@@ -41,15 +41,17 @@ class A_Syncronizer:
         for i in range(0, 3):
             member = Member(project, "key_{}".format(i), "fakeRole")
             member._id = i
+            member.id = i
             member.save()
 
-        phase = Phase(project, 'phase key')
+        phase = Phase(project, 'phase key 1')
         phase._id = 1
         phase.save()
 
         for i in range(0, 5):
             task = Task(project)
             task._id = i
+            task.description = 'Task  {}'.format(i)
             task.save()
 
         for i in range(0, 3):
@@ -71,7 +73,18 @@ class A_Syncronizer:
     def should_deploy_one_repository_to_other(self):
         origin = self.create_fake_repo()
         destination = Mock()
-        destination.insert_task = lambda x: x._id =
+        def insert_task(self, task):
+            task._id = int(task.description[-1]) + 1
+
+        def insert_phase(self, phase):
+            phase._id = int(phase.key[-1]) + 1
+
+        def insert_member(self, member):
+            member._id = int(member.key[-1]) + 1
+
+        destination.insert_task = insert_task
+        destination.insert_phase = insert_phase
+        destination.insert_member = insert_member
 
         destination.project = Project(origin.project.key, destination)
 
