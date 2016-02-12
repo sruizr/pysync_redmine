@@ -1,1 +1,3 @@
-{}
+{
+  "test/test_sync.py::A_Syncronizer::()::should_deploy_one_repository_to_other": true
+}

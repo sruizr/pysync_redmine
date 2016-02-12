@@ -109,6 +109,9 @@ class Persistent:
 
         self._snap()
 
+    def copy(self, new_project):
+        pass
+
     def remove(self):
         pass
 
@@ -180,9 +183,18 @@ class Task(Persistent):
                 follows.append(relation.from_task)
         return follows
 
+    def copy(self, project_destination):
+        new_task = Task(project_destination)
+        new_task.description = self.description
+        new_task.start_date = self.start_date
+        new_task.duration = self.duration
+        new_task.complete = self.complete
+
+        return new_task
+
     def __str__(self):
 
-        result ="""{}:{}
+        result = """{}:{}
 start date: {}
 duration: {}
 assigned to: {}""".format(
@@ -192,6 +204,7 @@ assigned to: {}""".format(
                                       self.duration,
                                       self.assigned_to.key
                                       )
+        return result
 
 
 class Milestone(Task):
@@ -206,6 +219,14 @@ class Phase(Task):
         self.due_date = None
         self.tasks = []
 
+    def copy(self, project_destination):
+        new_phase = Phase(project_destination)
+        new_phase.due_date = self.due_date
+        new_phase.description = self.description
+        new_phase.key = self.key
+
+        return new_phase
+
 
 class Member(Persistent):
     def __init__(self, project, key, *roles):
@@ -216,6 +237,12 @@ class Member(Persistent):
             roles = []
         self.roles = set(roles)
         self.tasks = []
+
+    def copy(self, project_destination):
+        roles = self.roles.copy()
+        new_member = Member(project_destination, self.key, *roles)
+
+        return new_member
 
 
 class Calendar(Persistent):

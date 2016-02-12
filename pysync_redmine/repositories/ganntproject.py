@@ -121,7 +121,6 @@ class GanttRepo(Repository):
         for task in project.tasks.values():
             task.snap()
 
-
     def _get_tokens(self, token_string):
         tokens = token_string.split(',')
         result = []

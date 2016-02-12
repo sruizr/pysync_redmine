@@ -2,31 +2,45 @@ import json
 import click
 import pysync_redmine.repositories as repos
 from pysync_redmine.domain import (
-                                    SequenceRelation,
+                                    RelationSet,
                                     Task,
                                     Member,
                                     Phase,
                                     )
-
+import pdb
 
 @click.command()
+@click.option('--file', prompt='Enter path of project file',
+              help='Filename of GanntProject')
 @click.option('--project', prompt='Enter the URL of your project',
               help='URL of project at Redmine')
 @click.option('--user', prompt='Enter your user login at Redmine',
               help='User key how is goint to update system to Redmine')
 @click.option('--password', prompt='Enter your password', hide_input=True)
-@click.option('--file', prompt='Enter path of project file',
-              help='Filename of GanntProject')
-def sync_red_ganttproject(project_url, user_key, psw, filename):
+def gantt_to_redmine(filename, project_url, user_key, psw):
     redmine = repos.redmine.RedmineRepo(project_url, user_key, psw)
     gantt = repos.ganntproject.GanttRepo(filename)
 
-    redmine_project = redmine.open_project()
-    gantt_project = gantt.open_project()
+    redmine.open_source()
+    gantt.open_source()
 
-    syncronizer = Syncronizer(redmine_project, gantt_project)
+    redmine_project = redmine.project
+    gantt_project = gantt.project
 
-    syncronizer.develop(gantt_project)
+    syncronizer = Syncronizer()
+
+    syncronizer.deploy(redmine_project, gantt_project)
+
+    data_name = '{}.json'.format(gantt_project.key)
+    with open(data_name, 'w') as outfile:
+        json.dump(syncronizer.sync_data, outfile)
+
+
+@click.command()
+@click.option('--sync_file', prompt='Enter your sync_file to load:', help=
+              'Filename .json with sync data')
+def sync_projects(sync_data_file):
+    pass
 
 
 class Syncronizer:
@@ -45,84 +59,68 @@ class Syncronizer:
         if len(self.projects) > 1:
             self.deploy(project)
 
-    def deploy(self, destination):
+    def deploy(self, from_repo, to_repo):
 
-        for project in self.projects:
-            if project != destination:
-                origin = project
-        if destination not in self.projects:
-            self.projects.append(destination)
+        from_project = from_repo.project
+        to_project = to_repo.project
 
-        for member in origin.members:
-            new_member = self.copy_member(member, destination)
+        from_repo.open_source()
+        from_repo.load_project('project_key')
+        from_repo.close_source()
+
+        to_repo.open_source()
+
+        for member in from_project.members.values():
+            new_member = member.copy(to_project)
             new_member.save()
             self.sync_data['members'].append((member._id, new_member. _id))
         member_map = {
                 value[0]: value[1] for value in self.sync_data['members']
                 }
 
-        for phase in origin.phases:
-            new_phase = self.copy_phase(phase, destination)
+        for phase in from_project.phases.values():
+            new_phase = phase.copy(to_project)
             new_phase.save()
             self.sync_data['phases'].append((phase._id, new_phase._id))
         phase_map = {
             value[0]: value[1] for value in self.sync_data['phases']
             }
 
-        for task in origin.tasks:
-            new_task = self.copy_task(task, destination)
+        for task in from_project.tasks.values():
+            new_task = task.copy(to_project)
             new_task.save()
             self.sync_data['tasks'].append((task._id, new_task._id))
         task_map = {
             value[0]: value[1] for value in self.sync_data['tasks']
             }
 
-        for task in origin.tasks:
-            destination_task = destination.tasks[task_map[task._id]]
+        pdb.set_trace()
+        for task in from_project.tasks.values():
+            to_project_task = to_project.tasks[task_map[task._id]]
 
-            destination_task.assigned_to = destination.members[
+            to_project_task.assigned_to = to_project.members[
                                                     member_map[
                                                         task.assigned_to._id
                                                         ]
                                                     ]
-            destination_task.phase = destination.phases[
+            to_project_task.phase = to_project.phases[
                                                     phase_map[
                                                         task.phase._id
                                                         ]
                                                     ]
-            destination_task.parent = destination.tasks[
+            to_project_task.parent = to_project.tasks[
                                                     task_map[
                                                         task.parent._id
                                                         ]
                                                     ]
             for next_task, delay in task.nexts:
-                dest_next_task = destination.tasks[
+                dest_next_task = to_project.tasks[
                                                 task_map[
                                                     next_task._id]
                                                 ]
-                destination_task.relations.add_next(dest_next_task, delay)
+                to_project_task.relations.add_next(dest_next_task, delay)
 
-            destination_task.save()
+            to_project_task.save()
 
-    def copy_task(self, task, project_destination):
-        new_task = Task(project_destination)
-        new_task.description = task.description
-        new_task.start_date = task.start_date
-        new_task.duration = task.duration
-        new_task.complete = task.complete
+        to_repo.close_source()
 
-        return new_task
-
-    def copy_phase(self, phase, project_destination):
-        new_phase = Phase(project_destination)
-        new_phase.due_date = phase.due_date
-        new_phase.description = phase.description
-        new_phase.key = phase.key
-
-        return new_phase
-
-    def copy_member(self, member, project_destination):
-        roles = member.roles.copy()
-        new_member = Member(member.key, project_destination, *roles)
-
-        return new_member
