@@ -95,26 +95,29 @@ class Syncronizer:
             value[0]: value[1] for value in self.sync_data['tasks']
             }
 
-        pdb.set_trace()
         for task in from_project.tasks.values():
             to_project_task = to_project.tasks[task_map[task._id]]
 
-            to_project_task.assigned_to = to_project.members[
+            if task.assigned_to:
+                to_project_task.assigned_to = to_project.members[
                                                     member_map[
                                                         task.assigned_to._id
                                                         ]
                                                     ]
-            to_project_task.phase = to_project.phases[
+            if task.phase:
+                to_project_task.phase = to_project.phases[
                                                     phase_map[
                                                         task.phase._id
                                                         ]
                                                     ]
-            to_project_task.parent = to_project.tasks[
+            if task.parent:
+                to_project_task.parent = to_project.tasks[
                                                     task_map[
                                                         task.parent._id
                                                         ]
                                                     ]
-            for next_task, delay in task.nexts:
+
+            for next_task, delay in task.relations.next_tasks.items():
                 dest_next_task = to_project.tasks[
                                                 task_map[
                                                     next_task._id]

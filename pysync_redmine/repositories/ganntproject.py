@@ -6,24 +6,24 @@ from pysync_redmine.domain import (Repository,
                                    Task,
                                    Phase,
                                    Calendar,
-                                   SequenceRelation)
+                                   RelationSet)
 import pdb
 
 
 class GanttRepo(Repository):
 
-    def __init__(self, filename=None):
+    def __init__(self):
         Repository.__init__(self)
-        if filename:
-            self.filename = filename
 
-    def open_source(self, filename=None):
-        if filename:
-            self.filename = filename
+    def open_source(self, **setup_pars):
+        self.setup_pars = setup_pars
 
-        self.source = ET.parse(self.filename)
+        self.source = ET.parse(setup_pars['filename']).get_root()
 
-    def load_members(self, project):
+        self.project = self.source.Project("example", self)
+
+    def load_members(self):
+
         members = {}
         resources = self.source.findall('./resources/resource')
         functions = self.source.findall('./roles/role')
@@ -104,15 +104,15 @@ class GanttRepo(Repository):
             task = project.tasks[int(resource.attrib['task-id'])]
             member = project.members[int(
                                          resource.attrib['resource-id']
-                                         )]
+                                                        )]
             task.assigned_to = member
 
         for phase in project.phases.values():
             resources = self.source.findall(
                                     "./tasks/task[@id='{}']//task".format(
-                                                                          phase._id
-                                                                          )
-                                    )
+                                                                    phase._id
+                                                                    )
+                                                        )
             for resource in resources:
                 task = project.tasks[int(resource.attrib['id'])]
                 task.phase = phase

@@ -102,7 +102,7 @@ class Persistent:
             container_name = class_name + 's'
             container = getattr(project, container_name)
 
-        method = getattr(repository, method_name)
+        method = getattr(repository, method_name.format(class_name))
         method(self)
         if container is not None:  # Inserted!
             container[self._id] = self

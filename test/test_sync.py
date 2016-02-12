@@ -73,19 +73,42 @@ class A_Syncronizer:
     def should_deploy_one_repository_to_other(self):
         origin = self.create_fake_repo()
         destination = Mock()
-        def insert_task(self, task):
+
+        def insert_task(task):
             task._id = int(task.description[-1]) + 1
 
-        def insert_phase(self, phase):
+        def insert_phase(phase):
             phase._id = int(phase.key[-1]) + 1
 
-        def insert_member(self, member):
+        def insert_member(member):
             member._id = int(member.key[-1]) + 1
 
-        destination.insert_task = insert_task
-        destination.insert_phase = insert_phase
-        destination.insert_member = insert_member
+        destination.insert_task.side_effect = insert_task
+        destination.insert_phase.side_effect = insert_phase
+        destination.insert_member.side_effect = insert_member
 
         destination.project = Project(origin.project.key, destination)
-
+        # pdb.set_trace()
         self.syncro.deploy(origin, destination)
+
+        assert len(self.syncro.sync_data['tasks']) == 5
+        assert len(self.syncro.sync_data['phases']) == 1
+        assert len(self.syncro.sync_data['members']) == 3
+        assert self.syncro.sync_data['tasks'][0] == (0, 1)
+        assert self.syncro.sync_data['phases'][0] == (1, 2)
+        assert self.syncro.sync_data['members'][0] == (0, 1)
+
+        project = destination.project
+        parent = destination.project.tasks[1]
+        assert parent.phase == project.phases[2]
+        assert project.tasks[2].assigned_to == project.members[2]
+
+        for i in range(2, 4):
+            assert project.tasks[i].parent == project.tasks[1]
+
+        assert project.tasks[4].relations.next_tasks[project.tasks[5]] == 0
+        assert len(project.tasks) == 5
+        assert len(project.phases) == 1
+        assert len(project.members) == 3
+
+
