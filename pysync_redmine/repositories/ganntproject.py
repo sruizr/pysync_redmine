@@ -24,6 +24,7 @@ class GanttRepo(Repository):
         self.source = ET.parse(setup_pars['filename']).getroot()
 
 
+
     def load_members(self):
         project = self.project
         members = {}
@@ -89,6 +90,15 @@ class GanttRepo(Repository):
                 tasks[task._id] = task
         project.tasks = tasks
 
+        input_id = self.source.findall('./tasks/taskproperties/taskproperty'
+                                       '[@name="inputs"]')
+        if input_id:
+            input_id = input_id[0].attrib['id']
+        output_id = self.source.findall('./tasks/taskproperties/taskproperty'
+                                       '[@name="outputs"]')
+        if output_id:
+            output_id = output_id[0].attrib['id']
+
         for resource in resources:
             if int(resource.attrib['id']) not in project.phases:
                 task = project.tasks[int(resource.attrib['id'])]
@@ -98,16 +108,18 @@ class GanttRepo(Repository):
                         subtask.parent = task
                     if child.tag == 'depend':
                         next_task = project.tasks[int(child.attrib['id'])]
-                        task.relations.add_next(next_task, int(child.attrib['difference']))
-                    # if child.tag == 'customproperty':
-                    #     if child.attrib['taskproperty-id'] == self.input_id:
-                    #         task.inputs = self._get_tokens(
-                    #                                        child.attrib['value']
-                    #                                        )
-                    #     if child.attrib['taskproperty-id'] == self.output_id:
-                    #         task.outputs = self._get_tokens(
-                    #                                         child.attrib['value']
-                    #                                         )
+                        task.relations.add_next(next_task,
+                                                int(child.attrib['difference'])
+                                                )
+                    if child.tag == 'customproperty':
+                        if child.attrib['taskproperty-id'] == input_id:
+                            task.inputs = self._get_tokens(
+                                                           child.attrib['value']
+                                                           )
+                        if child.attrib['taskproperty-id'] == output_id:
+                            task.outputs = self._get_tokens(
+                                                            child.attrib['value']
+                                                            )
 
         resources = self.source.findall('./allocations/allocation')
         for resource in resources:
@@ -115,7 +127,10 @@ class GanttRepo(Repository):
             member = project.members[int(
                                          resource.attrib['resource-id']
                                                         )]
-            task.assigned_to = member
+            if resource.attrib['responsible'] == 'true':
+                task.assigned_to = member
+            else:
+                task.colaborators.append(member)
 
         for phase in project.phases.values():
             resources = self.source.findall(
@@ -137,7 +152,8 @@ class GanttRepo(Repository):
         for token in tokens:
             token = token.strip()
             token = token.split('//')
-            self.items.add(token[0])
+            token = [e.strip() for e in token]
+            self.project.tokens.add(token[0])
             result.append(token)
 
         return result

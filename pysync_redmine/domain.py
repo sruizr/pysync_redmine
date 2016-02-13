@@ -142,6 +142,7 @@ class Task(Persistent):
         self.relations = RelationSet(self)
         self.inputs = []
         self.outputs = []
+        self.colaborators = []
 
     @property
     def assigned_to(self):

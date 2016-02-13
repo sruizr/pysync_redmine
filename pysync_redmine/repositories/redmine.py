@@ -39,58 +39,25 @@ class ResourceWrapper:
 
 class RedmineRepo(Repository):
 
-    def __init__(self, project_url, user_key=None, psw=None):
+    def __init__(self):
+        Repository.__init__(self)
 
-        if user_key is None:
-            user_key = input("Enter your redmine user key:")
-        if psw is None:
-            psw = getpass.getpass("Enter your password:")
+    def open_source(self, project, **setup_pars):
+        self.setup_pars = setup_pars
+        self.project = project
+        username = setup_pars.pop('username', None)
+        psw = setup_pars.pop('password', None)
 
-        paths = project_url.split('/')
-        project_key = paths.pop(-1)
-        self.source = '/'.join(paths[0:-1])
-        self.redmine = redmine.Redmine(self.source,
-                                       username=user_key, password=psw)
+        if not username:
+            username =input("Enter your redmine login name: ")
+        if not psw:
+            psw = getpass.getpass("Enter your password: ")
 
-        project = self.redmine.project.get(project_key)
-        self.project = Project(project_key, self)
-        self.project._id = project.id
-        self.project.description = project.name
-
-    def _to_be_removed(self):
-        project = self.project
-        for version in project.versions:
-            self._load_phase(version)
-
-        for issue in project.issues:
-            self._load_task(issue)
-
-        for issue in project.issues:
-                for child in issue.children:
-                    self.tasks[issue.id].subtasks.append(
-                                                         self.tasks[child.id])
-                    self.tasks[child.id].parent = self.tasks[issue.id]
-
-        for issue in project.issues:
-            for relation in issue.relations:
-                    if relation.relation_type == 'precedes':
-                        self.tasks[relation.issue_id].follows.append(
-                                                                     self.tasks[relation.issue_to_id]
-                                                                     )
-                        self.tasks[relation.issue_to_id].precedes.append(
-                                             self.tasks[relation.issue_id]
-                                             )
-        for task in self.tasks:
-            task.snap()
-
-        for phase in self.phases:
-            phase.snap()
-
-    def open_source(self):
-        self.source = None
+        self.source = redmine.Redmine(self.setup_pars['url'],
+                                       username=username, password=psw)
 
     def load_tasks(self, project):
-        issues = self.redmine.issue.filter(project_id=project._id)
+        issues = self.source.issue.filter(project_id=project._id)
         for issue in issues:
             issue = ResourceWrapper(issue, "issue")
             task = self.new_task()
@@ -108,7 +75,7 @@ class RedmineRepo(Repository):
             self.tasks[task._id] = task
 
     def load_members(self, user, roles):
-        users = self.redmine.user.all()
+        users = self.source.user.all()
         for member in project.memberships:
             user = users.get(member.user.id)
             project_roles = [r.name for r in member.roles]
@@ -116,10 +83,10 @@ class RedmineRepo(Repository):
 
         self.members[user.id] = (user.login, roles)
 
-    def load_phases(self ):
+    def load_phases(self):
 
         phase = Phase(self)
-        version = ResourceWrapper(version, 'version')
+        version = ResourceWrapper(phase, 'version')
         phase._id = version.id
         phase.description = "{}//{}".format(version.name, version.description)
         phase.due_date = version.due_date
@@ -137,7 +104,7 @@ class RedmineRepo(Repository):
             'done_ratio': task.complete
         }
 
-        issue = self.redmine.issue.create(**fields)
+        issue = self.source.issue.create(**fields)
         task._id = issue.id
 
     def insert_phase(self, phase):
@@ -148,18 +115,18 @@ class RedmineRepo(Repository):
                 'due_date': phase.due_date
                 }
 
-        version = self.redmine.version.create(**pars)
+        version = self.source.version.create(**pars)
         phase._id = version.id
 
     def insert_member(self, member):
-        user = self.redmine.user.filter(name=member.key)[0]
-        roles = self.redmine.role.all()
+        user = self.source.user.filter(name=member.key)[0]
+        roles = self.source.role.all()
         role_ids = []
         for role in roles:
                 if role.name in member.roles:
                     role_ids.append(role.id)
 
-        project_membership = self.redmine.project_membership.create(
+        project_membership = self.source.project_membership.create(
                                                             project_id=member.project._id,
                                                             user_id=user.id,
                                                             roles_ids=role_ids)
@@ -197,11 +164,11 @@ class RedmineRepo(Repository):
                 task.phase is not None):
             fields['fixed_version_id'] = task.phase._id
 
-        self.redmine.issue.update(resource_id, **fields)
+        self.source.issue.update(resource_id, **fields)
 
         # Updating relations directly from repository
 
-        relations = self.redmine.issue_relation.filter(issue_id=task._id)
+        relations = self.source.issue_relation.filter(issue_id=task._id)
         current_relations = {}
         tasks = task.project.tasks
         for relation in relations:
@@ -211,15 +178,15 @@ class RedmineRepo(Repository):
         for next_task, delay in task.relations.next_tasks.items():
             if next_task in current_relations:
                 if delay != current_relations[next_task].delay:
-                    self.redmine.issue_relation.delete(
+                    self.source.issue_relation.delete(
                                                current_relations[next_task].id
                                                )
-                    self.redmine.issue_relation.create(issue_id=task._id,
+                    self.source.issue_relation.create(issue_id=task._id,
                                                        issue_to_id=next_task._id,
                                                        relation_type='precedes',
                                                        delay=delay)
             else:
-                self.redmine.issue_relation.create(issue_id=task._id,
+                self.source.issue_relation.create(issue_id=task._id,
                                                    issue_to_id=next_task._id,
                                                    relation_type='precedes',
                                                    delay=delay)
@@ -228,11 +195,10 @@ class RedmineRepo(Repository):
         # delete
         for next_task, relation in current_relations.items():
             if next_task not in task.relations.next_tasks:
-                self.redmine.issue_relation.delete(relation.id)
+                self.source.issue_relation.delete(relation.id)
 
     def update_member(self, member):
         pass
 
     def update_phase(self, phase):
         pass
-
