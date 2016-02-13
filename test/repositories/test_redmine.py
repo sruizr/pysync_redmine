@@ -6,6 +6,7 @@ from pysync_redmine.domain import (
                                    Task,
                                    Phase,
                                    Member,
+                                   Calendar
                                    )
 import datetime
 import pdb
@@ -16,13 +17,18 @@ class A_RedmineRepo:
     def setup_method(self, method):
         self.patcher = patch('pysync_redmine.repositories.redmine.redmine')
         redmine = self.patcher.start()
-        self.redmine = Mock()
-        redmine.Redmine.return_value = self.redmine
-        self.repo = RedmineRepo('http://fake_redmine/project/example',
-                              'user', 'psw')
+        self.source = Mock()
+        redmine.Redmine.return_value = self.source
+
+        self.repo = RedmineRepo()
+
         self.project = Project('example')
         self.project._id = 123
         self.project.description = 'example project'
+        self.project.calendar = Calendar()
+
+        self.repo.open_source(self.project, url='http://fake_redmine.org',
+                              username='user', password='psw')
 
     def teardown_method(self, method):
         self.patcher.stop()
@@ -38,15 +44,14 @@ class A_RedmineRepo:
 
         redmine.project.get.return_value = project
 
-        redmine_repo = RedmineRepo('http://fake_redmine/project/example',
-                              'user', 'psw')
+        redmine_repo = RedmineRepo()
+        redmine_repo.open_source(project, url='http://fake_redmine',
+                                 username='user', password='psw')
 
-        # pdb.set_trace()
-
-        assert redmine_repo.source == 'http://fake_redmine'
-        assert redmine_repo.project.key == 'example'
-        assert redmine_repo.project._id == 1
-        assert redmine_repo.project.description == project.name
+        # assert redmine_repo.source == 'http://fake_redmine'
+        # assert redmine_repo.project.key == 'example'
+        # assert redmine_repo.project._id == 1
+        # assert redmine_repo.project.description == project.name
 
         mock_redmine.Redmine.assert_called_with(
                                                 'http://fake_redmine',
@@ -64,20 +69,20 @@ class A_RedmineRepo:
 
         project = Mock()
         project.id = 1
+        project.key = 'example'
         project.name = 'This is an example'
         redmine.project.get.return_value = project
 
-        mock_input.return_value = 'user'
-        mock_getpass.return_value = 'psw'
+        mock_input.return_value = 'userrr'
+        mock_getpass.return_value = 'pswww'
 
-        redmine_repo = RedmineRepo('http://fake_redmine/project/example')
+        redmine_repo = RedmineRepo()
+        redmine_repo.open_source(project, url='http://fake_redmine')
 
-        assert redmine_repo.source == 'http://fake_redmine'
-        assert redmine_repo.project.key == 'example'
-        assert redmine_repo.project._id == 1
-        assert redmine_repo.project.description == project.name
+        assert redmine_repo.project == project
         mock_redmine.Redmine.assert_called_with('http://fake_redmine',
-                                                username='user', password='psw')
+                                                username='userrr',
+                                                password='pswww')
 
     def should_load_members(self):
         pass
@@ -95,7 +100,7 @@ class A_RedmineRepo:
 
             issues.append(issue)
 
-        self.redmine.issue.filter.return_value = issues
+        self.source.issue.filter.return_value = issues
 
     def should_insert_member(self):
         member = Member(self.project, 'user_key',
@@ -103,18 +108,18 @@ class A_RedmineRepo:
 
         user = Mock()
         user.id = 456
-        self.redmine.user.filter.return_value = [user]
+        self.source.user.filter.return_value = [user]
 
         roles = [Mock(), Mock()]
         roles[0].id = 1
         roles[0].name = 'no my friend'
         roles[1].id = 2
         roles[1].name = 'master chef'
-        self.redmine.role.all.return_value = roles
+        self.source.role.all.return_value = roles
 
         membership = Mock()
         membership.id = 3
-        self.redmine.project_membership.create.return_value = membership
+        self.source.project_membership.create.return_value = membership
 
         self.repo.insert_member(member)
 
@@ -123,7 +128,7 @@ class A_RedmineRepo:
                     'user_id': user.id,
                     'roles_ids': [2]
         }
-        self.redmine.project_membership.create.assert_called_with(
+        self.source.project_membership.create.assert_called_with(
                                                                   **pars)
         assert member._id == 456
 
@@ -135,7 +140,7 @@ class A_RedmineRepo:
 
         version = Mock()
         version.id = 3
-        self.redmine.version.create.return_value = version
+        self.source.version.create.return_value = version
 
         self.repo.insert_phase(phase)
 
@@ -145,7 +150,7 @@ class A_RedmineRepo:
                     'description': phase.description,
                     'due_date': phase.due_date
         }
-        self.redmine.version.create.assert_called_with(**pars)
+        self.source.version.create.assert_called_with(**pars)
         assert phase._id == 3
 
     def should_insert_task(self):
@@ -159,7 +164,7 @@ class A_RedmineRepo:
 
         issue = Mock()
         issue.id = 5
-        self.redmine.issue.create.return_value = issue
+        self.source.issue.create.return_value = issue
 
         self.repo.insert_task(task)
 
@@ -170,7 +175,7 @@ class A_RedmineRepo:
             'due_date': datetime.date(2016, 1, 5),
             'done_ratio': 75,
         }
-        self.redmine.issue.create.assert_called_with(**pars)
+        self.source.issue.create.assert_called_with(**pars)
         assert task._id == 5
 
     def get_basic_frame(self):
@@ -226,7 +231,7 @@ class A_RedmineRepo:
 
         main_task.relations.add_next(next_task, 0)
 
-        self.redmine.issue_relation.filter.return_value = []
+        self.source.issue_relation.filter.return_value = []
 
         self.repo.update_task(main_task)
 
@@ -239,7 +244,7 @@ class A_RedmineRepo:
             'assigned_to_id': member._id,
             'parent_issue_id': parent._id,
         }
-        self.redmine.issue.update.assert_called_with(1, **pars)
+        self.source.issue.update.assert_called_with(1, **pars)
 
         pars = {
             'issue_id': main_task._id,
@@ -247,7 +252,7 @@ class A_RedmineRepo:
             'relation_type': 'precedes',
             'delay': 0
             }
-        self.redmine.issue_relation.create.assert_called_with(
+        self.source.issue_relation.create.assert_called_with(
                                                         **pars)
 
     def should_update_tasks_with_removed_next_tasks(self):
@@ -257,11 +262,11 @@ class A_RedmineRepo:
         mock_relation.id = 1000
         mock_relation.issue_to_id = next_task._id
         mock_relation.relation_type = 'precedes'
-        self.redmine.issue_relation.filter.return_value = [mock_relation]
+        self.source.issue_relation.filter.return_value = [mock_relation]
 
         self.repo.update_task(main_task)
 
-        self.redmine.issue_relation.delete.assert_called_with(mock_relation.id)
+        self.source.issue_relation.delete.assert_called_with(mock_relation.id)
 
     def should_update_tasks_with_changed_delays(self):
         phase, member, parent, main_task, next_task = self.get_basic_frame()
@@ -273,17 +278,17 @@ class A_RedmineRepo:
         mock_relation.issue_to_id = next_task._id
         mock_relation.relation_type = 'precedes'
         mock_relation.delay = 0
-        self.redmine.issue_relation.filter.return_value = [mock_relation]
+        self.source.issue_relation.filter.return_value = [mock_relation]
 
         self.repo.update_task(main_task)
 
-        self.redmine.issue_relation.delete.assert_called_with(mock_relation.id)
+        self.source.issue_relation.delete.assert_called_with(mock_relation.id)
         pars = {
             'issue_id': main_task._id,
             'issue_to_id': next_task._id,
             'relation_type': 'precedes',
             'delay': 1
             }
-        self.redmine.issue_relation.create.assert_called_with(
+        self.source.issue_relation.create.assert_called_with(
                                                         **pars)
 

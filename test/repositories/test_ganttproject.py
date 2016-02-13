@@ -54,8 +54,16 @@ class A_GanttRepo:
         subtask = ET.SubElement(parent, 'task', {'id': '2', 'name': 'subtask task',
                                'start': '2016-01-04', 'duration': '3', 'complete': '90'})
         ET.SubElement(subtask, 'depend', {'id': '3', 'difference': '5'})
-        ET.SubElement(tasks, 'task', {'id': '3', 'name': 'Task without phase',
+        ET.SubElement(subtask, 'custom')
+        alone = ET.SubElement(tasks, 'task', {'id': '3', 'name': 'Task without phase',
                                'start': '2016-01-04', 'duration': '3', 'complete': '100'})
+
+        inputs = 'one item // with section, alone item'
+        outputs = 'one item // with //several sections, alone item'
+        ET.SubElement(alone, 'customproperty',
+                      {'taskproperty-id': 'tpc0', 'value': inputs})
+        ET.SubElement(alone, 'customproperty',
+                      {'taskproperty-id': 'tpc1', 'value': outputs})
 
         allocations = ET.SubElement(source, 'allocations')
         ET.SubElement(allocations, 'allocation', {
@@ -64,6 +72,15 @@ class A_GanttRepo:
         ET.SubElement(allocations, 'allocation', {
                       'task-id': '2', 'resource-id': '1', 'function': '3',
                       'responsible': 'true'})
+        ET.SubElement(allocations, 'allocation', {
+                      'task-id': '2', 'resource-id': '2', 'function': '2',
+                      'responsible': 'false'})
+
+        taskproperties = ET.SubElement(tasks, 'taskproperties')
+        ET.SubElement(taskproperties, 'taskproperty',
+                        {'id': 'tpc0', 'name': 'inputs'})
+        ET.SubElement(taskproperties, 'taskproperty',
+                        {'id': 'tpc1', 'name': 'outputs'})
 
         return source
 
@@ -106,6 +123,7 @@ class A_GanttRepo:
         alone = self.project.tasks[3]
         leader = self.project.members[0]
         developer = self.project.members[1]
+        no_one = self.project.members[2]
 
         assert len(self.project.tasks) == 3
         assert len(parent.subtasks) == 1
@@ -117,7 +135,14 @@ class A_GanttRepo:
         assert subtask.phase == phase
         assert subtask.assigned_to == developer
         assert subtask.relations.next_tasks[alone] == 5
+        assert len(subtask.colaborators) == 1
+        assert no_one == subtask.colaborators[0]
+
         assert alone.parent is None
         assert alone.phase is None
         assert alone.assigned_to is None
+        assert len(alone.inputs) == 2
+        assert len(alone.outputs) == 2
+        assert len(self.project.tokens) == 2
+        assert alone.outputs[0] == ['one item', 'with', 'several sections']
 
