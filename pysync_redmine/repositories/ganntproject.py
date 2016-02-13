@@ -23,7 +23,6 @@ class GanttRepo(Repository):
 
         self.source = ET.parse(setup_pars['filename']).getroot()
 
-
     def load_members(self):
         project = self.project
         members = {}

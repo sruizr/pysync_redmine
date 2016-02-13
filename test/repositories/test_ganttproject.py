@@ -120,4 +120,3 @@ class A_GanttRepo:
         assert alone.parent is None
         assert alone.phase is None
         assert alone.assigned_to is None
-
