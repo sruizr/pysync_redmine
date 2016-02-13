@@ -15,15 +15,17 @@ class GanttRepo(Repository):
     def __init__(self):
         Repository.__init__(self)
 
-    def open_source(self, **setup_pars):
+    def open_source(self, project, **setup_pars):
+        self.project = project
+        self.project.repository = self
         self.setup_pars = setup_pars
+        self.setup_pars['project_key'] = project.key
 
-        self.source = ET.parse(setup_pars['filename']).get_root()
+        self.source = ET.parse(setup_pars['filename']).getroot()
 
-        self.project = self.source.Project("example", self)
 
     def load_members(self):
-
+        project = self.project
         members = {}
         resources = self.source.findall('./resources/resource')
         functions = self.source.findall('./roles/role')
@@ -33,16 +35,18 @@ class GanttRepo(Repository):
                 if function.attrib['id'] == role:
                     role = function.attrib['name']
                     break
-            member = Member(resource.attrib['name'], role)
-            members[int(resource.attrib['id'])] = member
-            member.snap()
+            member = Member(project, resource.attrib['name'], role)
+            member._id = int(resource.attrib['id'])
+            members[member._id] = member
+            member._snap()
 
         project.members = members
 
-    def load_calendar(self, project):
-        project.calendar = Calendar()
+    def load_calendar(self):
+        self.project.calendar = Calendar()
 
-    def load_phases(self, project):
+    def load_phases(self):
+        project = self.project
         phases = {}
         resources = self.source.findall('./tasks/task[task]')
 
@@ -50,7 +54,12 @@ class GanttRepo(Repository):
             phase = Phase(project)
             phase_id = int(resource.attrib['id'])
             phase._id = phase_id
-            phase.description = resource.attrib['name']
+            name = resource.attrib['name']
+            key, description = name.split('. ')
+            key = key.strip()
+            description = description.strip()
+            phase.key = key
+            phase.description = description
             start_date = datetime.datetime.strptime(
                                                     resource.attrib['start'],
                                                     '%Y-%m-%d').date()
@@ -59,16 +68,17 @@ class GanttRepo(Repository):
                                                int(resource.attrib['duration'])
                                                )
             phases[phase_id] = phase
-            phase.snap()
+            phase._snap()
 
         project.phases = phases
 
-    def load_tasks(self, project):
+    def load_tasks(self):
+        project = self.project
         tasks = {}
         resources = self.source.findall('./tasks//task')
         for resource in resources:
             if int(resource.attrib['id']) not in project.phases:
-                task = Task(self)
+                task = Task(project)
                 task._id = int(resource.attrib['id'])
                 task.description = resource.attrib['name']
                 task.start_date = datetime.datetime.strptime(
@@ -88,7 +98,7 @@ class GanttRepo(Repository):
                         subtask.parent = task
                     if child.tag == 'depend':
                         next_task = project.tasks[int(child.attrib['id'])]
-                        SequenceRelation(task, next_task)
+                        task.relations.add_next(next_task, int(child.attrib['difference']))
                     # if child.tag == 'customproperty':
                     #     if child.attrib['taskproperty-id'] == self.input_id:
                     #         task.inputs = self._get_tokens(
@@ -119,7 +129,7 @@ class GanttRepo(Repository):
                 phase.tasks.append(task)
 
         for task in project.tasks.values():
-            task.snap()
+            task._snap()
 
     def _get_tokens(self, token_string):
         tokens = token_string.split(',')

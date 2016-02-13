@@ -11,7 +11,7 @@ class Repository:
         self.project = None
 
     @abstractmethod
-    def open_source(self, **kwargs):
+    def open_source(self, project, **kwargs):
         pass
 
     def close_source(self):
@@ -31,16 +31,16 @@ class Repository:
     def load_members(self, member): pass
 
     @abstractmethod
-    def save_task(self, task): pass
+    def insert_task(self, task): pass
 
     @abstractmethod
-    def save_phase(self, phase): pass
+    def insert_phase(self, phase): pass
 
     @abstractmethod
-    def save_item(self, item, project): pass
+    def insert_item(self, item, project): pass
 
     @abstractmethod
-    def save_member(self, member): pass
+    def insert_item(self, member): pass
 
 
 class Project:
@@ -49,7 +49,7 @@ class Project:
         self.key = key
 
         if calendar is None:
-            calendar = Calendar()
+            calendaar = Calendar()
         self.calendar = calendar
 
         self.repository = repository
@@ -57,14 +57,15 @@ class Project:
         self.tasks = {}
         self.phases = {}
         self.members = {}
+        self.tokens = set()
 
     def load(self):
         if self.repository:
             self.repository.open_source()
-            self.repository.load_calendar(self)
-            self.repository.load_members(self)
-            self.repository.load_phases(self)
-            self.repository.load_tasks(self)
+            self.repository.load_calendar()
+            self.repository.load_members()
+            self.repository.load_phases()
+            self.repository.load_tasks()
             self.repository.close_source()
 
     def save(self):
