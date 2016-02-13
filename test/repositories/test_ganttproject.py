@@ -141,8 +141,8 @@ class A_GanttRepo:
         assert alone.parent is None
         assert alone.phase is None
         assert alone.assigned_to is None
+
         assert len(alone.inputs) == 2
         assert len(alone.outputs) == 2
         assert len(self.project.tokens) == 2
         assert alone.outputs[0] == ['one item', 'with', 'several sections']
-
