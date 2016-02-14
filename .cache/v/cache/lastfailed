@@ -1,1 +1,4 @@
-{}
+{
+  "test/repositories/test_redmine.py::A_RedmineRepo::()::should_insert_task": true,
+  "test/repositories/test_redmine.py::A_RedmineRepo::()::should_update_task_update_main_fields_and_new_nexts": true
+}
