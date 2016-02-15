@@ -6,7 +6,8 @@ from pysync_redmine.domain import (Repository,
                                    Task,
                                    Phase,
                                    Calendar,
-                                   RelationSet)
+                                   RelationSet,
+                                   StringTree)
 import pdb
 
 
@@ -146,12 +147,12 @@ class GanttRepo(Repository):
 
     def _get_tokens(self, token_string):
         tokens = token_string.split(',')
-        result = []
+        result = set()
         for token in tokens:
             token = token.strip()
             token = token.split('//')
             token = [e.strip() for e in token]
-            self.project.tokens.add(token[0])
-            result.append(token)
+            token = StringTree(token, self.project.tokens)
+            result.add(token)
 
         return result

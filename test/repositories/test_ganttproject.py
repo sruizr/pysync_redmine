@@ -144,5 +144,5 @@ class A_GanttRepo:
 
         assert len(alone.inputs) == 2
         assert len(alone.outputs) == 2
-        assert len(self.project.tokens) == 2
-        assert alone.outputs[0] == ['one item', 'with', 'several sections']
+        # print(self.project.tokens._str_level(1))
+        assert len(self.project.tokens.childs) == 2

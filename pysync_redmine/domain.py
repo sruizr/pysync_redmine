@@ -3,6 +3,86 @@ from abc import ABCMeta, abstractmethod
 import pdb
 
 
+class StringTree:
+    def __init__(self, name='/', parent=None):
+
+        # Finding proper parent
+        if parent:
+            if isinstance(name, str):
+                current = parent.find(name)
+                if current:
+                    self = current
+                    return
+            else:
+                nodes = name.copy()
+                for node in nodes:
+                    new_parent = parent.find(node)
+                    if new_parent:
+                        parent = new_parent
+                        name.pop(0)
+                        if not name:
+                            self = parent
+                            return
+                    else:
+                        break
+
+        self._parent = None
+        self.childs = set()
+        self.parent = parent
+
+        # Creating childs
+        if isinstance(name, str):
+            self.name = name
+        else:
+            if len(name) == 1:
+                self.name = name[0]
+            else:
+                self.name = name[-1]
+                self.parent = StringTree(name[0:-1], self.parent)
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @parent.setter
+    def parent(self, value):
+        if self._parent:
+            if self in self._parent.childs:
+                self._parent.childs.remove(self)
+        self._parent = value
+        if value:
+            value.childs.add(self)
+
+    def path(self, end_node=None):
+        """Returns a list with the path till the current node,
+        If end_node is a node the path is relative to this node."""
+        if end_node == self:
+            return []
+        if self.parent is None or self.parent == end_node:
+            return [self.name]
+        else:
+            full_path = self.parent.path(end_node)
+            full_path.append(self.name)
+            return full_path
+
+    def find(self, name):
+        """Find a child with a specific name, return None otherwise"""
+        for child in self.childs:
+            if child.name == name:
+                return child
+
+    def _str_level(self, level, identation='    '):
+        result = identation*level
+        result = result + ' ' + self.name + '\n'
+        for child in self.childs:
+            result += child._str_level(level+1, identation)
+        return result
+
+    def __str__(self):
+        level = 0
+        return self._str_level(level)
+
+
 class Repository:
 
     __metaclass__ = ABCMeta
@@ -57,7 +137,7 @@ class Project:
         self.tasks = {}
         self.phases = {}
         self.members = {}
-        self.tokens = set()
+        self.tokens = StringTree()
 
     def load(self):
         if self.repository:
@@ -140,8 +220,8 @@ class Task(Persistent):
         self._parent = None
         self.subtasks = []
         self.relations = RelationSet(self)
-        self.inputs = []
-        self.outputs = []
+        self.inputs = StringTree()
+        self.outputs = StringTree()
         self.colaborators = []
 
     @property
