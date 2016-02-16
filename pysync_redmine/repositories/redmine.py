@@ -5,7 +5,8 @@ from pysync_redmine.domain import (Repository,
                                    Member,
                                    Task,
                                    Phase,
-                                   Calendar)
+                                   Calendar,
+                                   StringTree)
 import getpass
 import pdb
 
@@ -95,6 +96,7 @@ class RedmineRepo(Repository):
 
     def insert_task(self, task):
         calendar = task.project.calendar
+
         fields = {
             'project_id': task.project._id,
             'subject': task.description,
@@ -103,6 +105,12 @@ class RedmineRepo(Repository):
                                               task.duration),
             'done_ratio': task.complete
         }
+
+        if task.inputs or task.outputs:
+            description = self._get_issue_description(task)
+            fields['description'] = description
+            print(description)
+
 
         issue = self.source.issue.create(**fields)
         task._id = issue.id
@@ -191,8 +199,7 @@ class RedmineRepo(Repository):
                                                    relation_type='precedes',
                                                    delay=delay)
 
-
-        # delete
+        # delete task relation if no exist in self.project
         for next_task, relation in current_relations.items():
             if next_task not in task.relations.next_tasks:
                 self.source.issue_relation.delete(relation.id)
@@ -202,3 +209,36 @@ class RedmineRepo(Repository):
 
     def update_phase(self, phase):
         pass
+
+    def _get_issue_description(self, task):
+        description = ''
+        if task.inputs:
+            description += 'h3. Inputs\n\n'
+            inputs = StringTree()
+            for token in task.inputs:
+                inputs.add_node(token.path()[1:])
+            for document in inputs.childs:
+                description += '* [[{}]]\n'.format(document.name)
+                description += self._write_childs(document.childs, 2)
+
+        if task.outputs:
+            description += '\nh3. Outputs\n\n'
+            outputs = StringTree()
+            for token in task.outputs:
+                outputs.add_node(token.path()[1:])
+            for document in outputs.childs:
+                description += '* [[{}]]\n'.format(document.name)
+                description += self._write_childs(document.childs, 2)
+
+        if description:
+            description += '\n------'
+        return description
+
+    def _write_childs(self, childs, level):
+        description = ''
+        if childs:
+            child_list = sorted(list(childs), key=lambda child: child.name)
+            for child in child_list:
+                description += '*'*level + ' ' + child.name + '\n'
+                description += self._write_childs(child.childs, level+1)
+        return description

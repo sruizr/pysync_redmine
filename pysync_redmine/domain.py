@@ -5,44 +5,30 @@ import pdb
 
 class StringTree:
     def __init__(self, name='/', parent=None):
-
-        # Finding proper parent
-        if parent:
-            if isinstance(name, str):
-                current = parent.find(name)
-                if current:
-                    self = current
-                    return
-            else:
-                nodes = name.copy()
-                for node in nodes:
-                    new_parent = parent.find(node)
-                    if new_parent:
-                        parent = new_parent
-                        name.pop(0)
-                        if not name:
-                            self = parent
-                            return
-                    else:
-                        break
-
         self._parent = None
         self.childs = set()
-        self.parent = parent
 
-        # Creating childs
+        # pdb.set_trace()
         if isinstance(name, str):
-            self.name = name
+            name = [name]
+        if len(name) == 1:
+            self.name = name[0]
+            self.parent = parent
         else:
-            if len(name) == 1:
-                self.name = name[0]
-            else:
-                self.name = name[-1]
-                self.parent = StringTree(name[0:-1], self.parent)
+            self.name = name[-1]
+            self.parent = StringTree(name[0:-1], parent)
 
     @property
     def parent(self):
         return self._parent
+
+    @property
+    def root(self):
+        parent = self.parent
+        while parent.parent:
+            parent = parent.parent
+
+        return parent
 
     @parent.setter
     def parent(self, value):
@@ -52,6 +38,24 @@ class StringTree:
         self._parent = value
         if value:
             value.childs.add(self)
+
+    def add_node(self, path):
+        if isinstance(path, str):
+            path = [path]
+        new_parent = self
+        new_path = path.copy()
+        for name in path:
+            child = new_parent.find(name)
+            if child:
+                new_parent = child
+                new_path.pop(0)
+            else:
+                break
+
+        if new_path == []:
+            return new_parent
+        else:
+            return StringTree(new_path, new_parent)
 
     def path(self, end_node=None):
         """Returns a list with the path till the current node,
@@ -129,7 +133,7 @@ class Project:
         self.key = key
 
         if calendar is None:
-            calendaar = Calendar()
+            calendar = Calendar()
         self.calendar = calendar
 
         self.repository = repository
@@ -220,8 +224,8 @@ class Task(Persistent):
         self._parent = None
         self.subtasks = []
         self.relations = RelationSet(self)
-        self.inputs = StringTree()
-        self.outputs = StringTree()
+        self.inputs = []
+        self.outputs = []
         self.colaborators = []
 
     @property
@@ -271,6 +275,8 @@ class Task(Persistent):
         new_task.start_date = self.start_date
         new_task.duration = self.duration
         new_task.complete = self.complete
+
+
 
         return new_task
 

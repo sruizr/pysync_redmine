@@ -89,6 +89,15 @@ class Syncronizer:
 
         for task in from_project.tasks.values():
             new_task = task.copy(to_project)
+            if task.outputs:*
+                for node in task.outputs:
+                    new_node = to_project.tokens.add_node(node.path()[1:])
+                    new_task.outputs.append(new_node)
+            if task.inputs:
+                for node in task.inputs:
+                    new_node = to_project.tokens.add_node(node.path()[1:])
+                    new_task.inputs.append(new_node)
+
             new_task.save()
             self.sync_data['tasks'].append((task._id, new_task._id))
         task_map = {

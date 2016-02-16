@@ -6,7 +6,8 @@ from pysync_redmine.domain import (
                                    Project,
                                    Member,
                                    Phase,
-                                   RelationSet
+                                   RelationSet,
+                                   StringTree
                                    )
 import pysync_redmine.repositories as repos
 from pysync_redmine.sync import Syncronizer
@@ -70,6 +71,14 @@ class A_Syncronizer:
 
         project.tasks[3].relations.add_next(project.tasks[4])
 
+        node_1 = project.tokens.add_node(['1', '2', '3'])
+        node_2 = project.tokens.add_node(['1', '2', '4'])
+        node_3 = project.tokens.add_node(['3', '4', '5'])
+        node_4 = project.tokens.add_node(['3', '6', '7'])
+
+        project.tasks[0].inputs = [node_1, node_2]
+        project.tasks[0].outputs = [node_3, node_4]
+
         return repo
 
     def should_deploy_one_repository_to_other(self):
@@ -113,4 +122,9 @@ class A_Syncronizer:
         assert len(project.phases) == 1
         assert len(project.members) == 3
 
+        for i in range(0, 2):
+            assert (destination.project.tasks[1].inputs[i].path() ==
+                        origin.project.tasks[0].inputs[i].path())
+            assert (destination.project.tasks[1].outputs[i].path() ==
+                        origin.project.tasks[0].outputs[i].path())
 

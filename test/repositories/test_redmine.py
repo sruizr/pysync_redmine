@@ -162,11 +162,25 @@ class A_RedmineRepo:
         task.duration = 1
         task.complete = 75
 
+        root = self.project.tokens
+
+        input_1 = root.add_node(['1', '2', '3'])
+        input_2 = root.add_node(['1', '2', '4'])
+        output_1 = root.add_node(['1', '5'])
+        output_2 = root.add_node(['1', '6'])
+        task.inputs = [input_1, input_2]
+        task.outputs = [output_1, output_2]
+
+
+
         issue = Mock()
         issue.id = 5
         self.source.issue.create.return_value = issue
 
         self.repo.insert_task(task)
+
+        description = self._get_issue_description()
+        print(description)
 
         pars = {
             'project_id': 123,
@@ -174,6 +188,7 @@ class A_RedmineRepo:
             'start_date': datetime.date(2016, 1, 4),
             'due_date': datetime.date(2016, 1, 5),
             'done_ratio': 75,
+            'description': description
         }
         self.source.issue.create.assert_called_with(**pars)
         assert task._id == 5
@@ -242,7 +257,7 @@ class A_RedmineRepo:
             'done_ratio': 100,
             'fixed_version_id': phase._id,
             'assigned_to_id': member._id,
-            'parent_issue_id': parent._id,
+            'parent_issue_id': parent._id
         }
         self.source.issue.update.assert_called_with(1, **pars)
 
@@ -292,3 +307,19 @@ class A_RedmineRepo:
         self.source.issue_relation.create.assert_called_with(
                                                         **pars)
 
+    def _get_issue_description(self):
+        description = """h3. Inputs
+
+* [[1]]
+** 2
+*** 3
+*** 4
+
+h3. Outputs
+
+* [[1]]
+** 5
+** 6
+
+------"""
+        return description

@@ -147,12 +147,12 @@ class GanttRepo(Repository):
 
     def _get_tokens(self, token_string):
         tokens = token_string.split(',')
-        result = set()
+        result = []
         for token in tokens:
             token = token.strip()
             token = token.split('//')
             token = [e.strip() for e in token]
-            token = StringTree(token, self.project.tokens)
-            result.add(token)
+            token = self.project.tokens.add_node(token)
+            result.append(token)
 
         return result
