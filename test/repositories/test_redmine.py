@@ -8,6 +8,7 @@ from pysync_redmine.domain import (
                                    Member,
                                    Calendar
                                    )
+from helper import get_basic_frame as get_base
 import datetime
 import pdb
 
@@ -85,15 +86,68 @@ class A_RedmineRepo:
                                                 password='pswww')
 
     def should_load_members(self):
-        pass
+        member_ships = dict()
+        for i in range(0, 4):
+            member_ships[i] = Mock()
+            member_ships[i].user_id = i+1
+            member_ships[i].roles_id = [r for r in range(0, i+1)]
+        self.source.member_ship.filter.return_value = member_ships
 
+        roles = dict()
+        for i in range(0, 4):
+            roles[i] = Mock()
+            roles[i].name = 'name {}'.format(i)
+            roles[i].id = i
+        self.source.role.all.return_value = roles
+
+        users = dict()
+        for i in range(1, 5):
+            users[i] = Mock()
+            users[i].id = i
+            users[i].login = 'user{}'.format(i)
+        self.source.user.all.return_value = users
+
+        self.repo.load_members()
+        project = self.repo.project
+        roles = list(roles.values())
+        for i in range(1, 5):
+            member = project.members[i]
+            assert member._id == i
+            assert member.key == 'user{}'.format(i)
+            assert member.roles == set([r.name for r in roles[0:i]])
+
+        pars = {'project_id': self.project._id}
+        self.source.member_ship.filter.assert_called_with(**pars)
+        self.source.role.all.assert_called_with()
+        self.source.user.all.assert_called_with()
 
     def should_load_phases(self):
-        pass
+        versions = dict()
+        for i in range(1, 3):
+            versions[i] = Mock()
+            versions[i].id = i
+            versions[i].name = 'v{}'.format(i)
+            versions[i].description = 'version number {}'.format(i)
+            versions[i].due_date = datetime.date(2016, 1, i)
+
+        self.source.version.filter.return_value = versions
+
+        self.repo.load_phases()
+
+        pars = {'project_id': self.project._id}
+        self.source.version.filter.assert_called_with(project_id=self.project._id)
+
+        # pdb.set_trace()
+        for i in range(1, 3):
+            phase = self.project.phases[i]
+            assert phase._id == i
+            assert phase.description == '{}. {}'.format(versions[i].name,
+                                                        versions[i].description)
+            assert phase.due_date == versions[i].due_date
 
     def should_load_tasks(self):
         issues = []
-        for i in range(0,2):
+        for i in range(0, 2):
             issue = Mock()
             issue.id = i
             issue.subject = 'description {}'.format(i)
@@ -193,47 +247,9 @@ class A_RedmineRepo:
         self.source.issue.create.assert_called_with(**pars)
         assert task._id == 5
 
-    def get_basic_frame(self):
-        mock_repository = Mock()
-        self.project.repository = mock_repository
-
-        phase = Phase(self.project)
-        phase._id = 2
-        phase.save()
-
-        member = Member(self.project, 'member_key')
-        member._id = 5
-        member.save()
-
-        main_task = Task(self.project)
-        main_task.description = 'Initial description'
-        main_task.start_date = datetime.date(2016, 1, 4)
-        main_task.duration = 2
-        main_task.complete = 75
-        main_task._id = 1
-        main_task.save()
-
-        parent = Task(self.project)
-        parent.description = 'parent description'
-        parent.start_date = datetime.date(2016, 1, 4)
-        parent.duration = 1
-        parent.complete = 100
-        parent._id = 2
-        parent.save()
-
-        next_task = Task(self.project)
-        next_task.description = 'next_task description'
-        next_task.start_date = datetime.date(2016, 1, 4)
-        next_task.duration = 1
-        next_task.complete = 100
-        next_task._id = 3
-        next_task.save()
-
-        return (phase, member, parent, main_task, next_task)
-
     def should_update_task_update_main_fields_and_new_nexts(self):
 
-        phase, member, parent, main_task, next_task = self.get_basic_frame()
+        phase, member, parent, main_task, next_task = get_base(self.project)
 
         # Updating changes
         main_task.description = 'Final description'
@@ -271,7 +287,7 @@ class A_RedmineRepo:
                                                         **pars)
 
     def should_update_tasks_with_removed_next_tasks(self):
-        phase, member, parent, main_task, next_task = self.get_basic_frame()
+        phase, member, parent, main_task, next_task = get_base(self.project)
 
         mock_relation = Mock()
         mock_relation.id = 1000
@@ -284,7 +300,7 @@ class A_RedmineRepo:
         self.source.issue_relation.delete.assert_called_with(mock_relation.id)
 
     def should_update_tasks_with_changed_delays(self):
-        phase, member, parent, main_task, next_task = self.get_basic_frame()
+        phase, member, parent, main_task, next_task = get_base(self.project)
 
         main_task.relations.add_next(next_task, 1)
 

@@ -18,7 +18,7 @@ class ResourceWrapper:
                                 'parent_issue_id', 'fixed_version_id',
                                 'assigned_to_id'
                                 ],
-                    'version': ['due_date']
+                    'version': ['due_date', 'desription', 'name', 'id']
                     }
 
     def __init__(self, resource, type):
@@ -75,24 +75,30 @@ class RedmineRepo(Repository):
 
             self.tasks[task._id] = task
 
-    def load_members(self, user, roles):
+    def load_members(self):
+        roles = self.source.role.all()
         users = self.source.user.all()
-        for member in project.memberships:
-            user = users.get(member.user.id)
-            project_roles = [r.name for r in member.roles]
-            self._load_member(user, project_roles)
+        member_ships = self.source.member_ship.filter(
+                                                  project_id=self.project._id
+                                                  )
 
-        self.members[user.id] = (user.login, roles)
+        for member_ship in member_ships.values():
+            user = users[member_ship.user_id]
+            project_roles = [roles[r].name for r in member_ship.roles_id]
+            member = Member(self.project, user.login, *project_roles)
+            member._id = user.id
+            self.project.members[member._id] = member
 
     def load_phases(self):
-
-        phase = Phase(self)
-        version = ResourceWrapper(phase, 'version')
-        phase._id = version.id
-        phase.description = "{}//{}".format(version.name, version.description)
-        phase.due_date = version.due_date
-
-        self.phases[phase._id] = phase
+        versions = self.source.version.filter(project_id=self.project._id)
+        for version in versions.values():
+            phase = Phase(self.project)
+            pdb.set_trace()
+            version = ResourceWrapper(version, 'version')
+            phase._id = version.id
+            phase.description = "{}. {}".format(version.name, version.description)
+            phase.due_date = version.due_date
+            self.project.phases[phase._id] = phase
 
     def insert_task(self, task):
         calendar = task.project.calendar
