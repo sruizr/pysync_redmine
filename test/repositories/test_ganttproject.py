@@ -1,7 +1,7 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from pysync_redmine.repositories.ganntproject import GanttRepo
+from pysync_redmine.repositories.ganttproject import GanttRepo
 from pysync_redmine.domain import (
                                    Project,
                                    Task,
@@ -17,19 +17,19 @@ class A_GanttRepo:
 
     def setup_method(self, method):
         self.patcher = patch('pysync_redmine.repositories.'
-                             'ganntproject.ET.parse')
+                             'ganttproject.ET.parse')
         element_tree = self.patcher.start()
         root = Mock()
         element_tree.return_value = root
         root.getroot.return_value = self.get_fake_source()
 
         self.repo = GanttRepo()
-        self.project = Project('example')
-        self.repo.open_source(self.project, filename='fake_file.gan')
+        self.repo.open_source(filename='fake_file.gan')
         self.repo.load_calendar()
+        self.project = self.repo.project
 
     def get_fake_source(self):
-        source = ET.Element('project')
+        source = ET.Element('project', {'name': 'example'})
 
         roles = ET.SubElement(source, 'roles')
         ET.SubElement(roles, 'role', {'id': '1', 'name': 'Project Leader'})

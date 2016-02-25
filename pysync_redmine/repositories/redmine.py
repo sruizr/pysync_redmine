@@ -42,20 +42,28 @@ class RedmineRepo(Repository):
 
     def __init__(self):
         Repository.__init__(self)
+        self.class_key = 'RedmineRepo'
 
-    def open_source(self, project, **setup_pars):
+    def open_source(self, **setup_pars):
         self.setup_pars = setup_pars
-        self.project = project
+        self.project = Project(setup_pars["project_key"], self)
+
         username = setup_pars.pop('username', None)
         psw = setup_pars.pop('password', None)
 
-        if not username:
-            username =input("Enter your redmine login name: ")
-        if not psw:
+        if username is None:
+            username = input("Enter your redmine login name: ")
+        if psw is None:
             psw = getpass.getpass("Enter your password: ")
 
         self.source = redmine.Redmine(self.setup_pars['url'],
-                                       username=username, password=psw)
+                                      username=username, password=psw)
+
+        red_project = self.source.project.get(self.project.key)
+        self.project._id = red_project.id
+
+    def load_calendar(self):
+        self.project.calendar = Calendar()
 
     def load_tasks(self, project):
         issues = self.source.issue.filter(project_id=project._id)
@@ -93,10 +101,12 @@ class RedmineRepo(Repository):
         versions = self.source.version.filter(project_id=self.project._id)
         for version in versions.values():
             phase = Phase(self.project)
-            pdb.set_trace()
+            # pdb.set_trace()
             version = ResourceWrapper(version, 'version')
             phase._id = version.id
-            phase.description = "{}. {}".format(version.name, version.description)
+            phase.description = "{}. {}".format(
+                                            version.name, version.description
+                                            )
             phase.due_date = version.due_date
             self.project.phases[phase._id] = phase
 
@@ -115,8 +125,6 @@ class RedmineRepo(Repository):
         if task.inputs or task.outputs:
             description = self._get_issue_description(task)
             fields['description'] = description
-            print(description)
-
 
         issue = self.source.issue.create(**fields)
         task._id = issue.id
@@ -136,14 +144,15 @@ class RedmineRepo(Repository):
         user = self.source.user.filter(name=member.key)[0]
         roles = self.source.role.all()
         role_ids = []
+
         for role in roles:
                 if role.name in member.roles:
                     role_ids.append(role.id)
 
-        project_membership = self.source.project_membership.create(
-                                                            project_id=member.project._id,
-                                                            user_id=user.id,
-                                                            roles_ids=role_ids)
+        self.source.project_membership.create(
+                                                project_id=member.project._id,
+                                                user_id=user.id,
+                                                role_ids=role_ids)
 
         member._id = user.id
 
@@ -178,43 +187,52 @@ class RedmineRepo(Repository):
                 task.phase is not None):
             fields['fixed_version_id'] = task.phase._id
 
-        self.source.issue.update(resource_id, **fields)
+        if fields:  # pending test
+            self.source.issue.update(resource_id, **fields)
 
         # Updating relations directly from repository
-
-        relations = self.source.issue_relation.filter(issue_id=task._id)
-        current_relations = {}
-        tasks = task.project.tasks
-        for relation in relations:
-            if relation.relation_type == 'precedes':
-                current_relations[tasks[relation.issue_to_id]] = relation
-
-        for next_task, delay in task.relations.next_tasks.items():
-            if next_task in current_relations:
-                if delay != current_relations[next_task].delay:
-                    self.source.issue_relation.delete(
-                                               current_relations[next_task].id
-                                               )
-                    self.source.issue_relation.create(issue_id=task._id,
-                                                       issue_to_id=next_task._id,
-                                                       relation_type='precedes',
-                                                       delay=delay)
-            else:
-                self.source.issue_relation.create(issue_id=task._id,
-                                                   issue_to_id=next_task._id,
-                                                   relation_type='precedes',
-                                                   delay=delay)
-
-        # delete task relation if no exist in self.project
-        for next_task, relation in current_relations.items():
-            if next_task not in task.relations.next_tasks:
-                self.source.issue_relation.delete(relation.id)
+        self._update_relations(task)
 
     def update_member(self, member):
         pass
 
     def update_phase(self, phase):
         pass
+
+    def _update_relations(self, task):
+
+        current_relations = {}
+        tasks = task.project.tasks
+
+        relations = self.source.issue_relation.filter(issue_id=task._id)
+        for relation in relations:
+            if (relation.relation_type == 'precedes') and (relation.issue_id == task._id):
+                current_relations[tasks[relation.issue_to_id]] = relation
+            if (relation.relation_type == 'follows') and (relation.issue_to_id == task._id):
+                current_relations[tasks[relation.issue_id]] = relation
+
+        for next_task, delay in task.relations.next_tasks.items():
+            if next_task in current_relations:
+                if delay != current_relations[next_task].delay:
+                    pdb.set_trace()
+                    self.source.issue_relation.delete(
+                                               current_relations[next_task].id
+                                               )
+                    self.source.issue_relation.create(issue_id=task._id,
+                                                      issue_to_id=next_task._id,
+                                                      relation_type='precedes',
+                                                      delay=delay)
+            else:
+                self.source.issue_relation.create(issue_id=task._id,
+                                                  issue_to_id=next_task._id,
+                                                  relation_type='precedes',
+                                                  delay=delay)
+
+        # delete task relation if no exist in self.project, bug it seems enter always..
+        for next_task, relation in current_relations.items():
+            pdb.set_trace()
+            if next_task not in task.relations.next_tasks:
+                self.source.issue_relation.delete(relation.id)
 
     def _get_issue_description(self, task):
         description = ''

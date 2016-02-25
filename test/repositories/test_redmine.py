@@ -23,13 +23,10 @@ class A_RedmineRepo:
 
         self.repo = RedmineRepo()
 
-        self.project = Project('example')
-        self.project._id = 123
-        self.project.description = 'example project'
-        self.project.calendar = Calendar()
-
-        self.repo.open_source(self.project, url='http://fake_redmine.org',
+        self.repo.open_source(project_key='example', url='http://fake_redmine.org',
                               username='user', password='psw')
+        self.project = self.repo.project
+        self.project._id = 123
 
     def teardown_method(self, method):
         self.patcher.stop()
@@ -46,13 +43,13 @@ class A_RedmineRepo:
         redmine.project.get.return_value = project
 
         redmine_repo = RedmineRepo()
-        redmine_repo.open_source(project, url='http://fake_redmine',
+        redmine_repo.open_source(project_key='example',
+                                 url='http://fake_redmine',
                                  username='user', password='psw')
 
-        # assert redmine_repo.source == 'http://fake_redmine'
-        # assert redmine_repo.project.key == 'example'
-        # assert redmine_repo.project._id == 1
-        # assert redmine_repo.project.description == project.name
+        assert redmine_repo.setup_pars['url'] == 'http://fake_redmine'
+        assert redmine_repo.project.key == 'example'
+        assert redmine_repo.project._id == 1
 
         mock_redmine.Redmine.assert_called_with(
                                                 'http://fake_redmine',
@@ -78,9 +75,9 @@ class A_RedmineRepo:
         mock_getpass.return_value = 'pswww'
 
         redmine_repo = RedmineRepo()
-        redmine_repo.open_source(project, url='http://fake_redmine')
+        redmine_repo.open_source(project_key=project.key, url='http://fake_redmine')
 
-        assert redmine_repo.project == project
+        assert redmine_repo.project._id == project.id
         mock_redmine.Redmine.assert_called_with('http://fake_redmine',
                                                 username='userrr',
                                                 password='pswww')
@@ -121,7 +118,10 @@ class A_RedmineRepo:
         self.source.role.all.assert_called_with()
         self.source.user.all.assert_called_with()
 
-    def should_load_phases(self):
+    @patch('pysync_redmine.repositories.redmine.ResourceWrapper')
+    def should_load_phases(self, mock_wrapper):
+        mock_wrapper.side_effect = lambda x, y: x
+
         versions = dict()
         for i in range(1, 3):
             versions[i] = Mock()
@@ -180,7 +180,7 @@ class A_RedmineRepo:
         pars = {
                     'project_id': 123,
                     'user_id': user.id,
-                    'roles_ids': [2]
+                    'role_ids': [2]
         }
         self.source.project_membership.create.assert_called_with(
                                                                   **pars)
@@ -224,8 +224,6 @@ class A_RedmineRepo:
         output_2 = root.add_node(['1', '6'])
         task.inputs = [input_1, input_2]
         task.outputs = [output_1, output_2]
-
-
 
         issue = Mock()
         issue.id = 5
@@ -285,6 +283,8 @@ class A_RedmineRepo:
             }
         self.source.issue_relation.create.assert_called_with(
                                                         **pars)
+
+        assert not self.source.issue_relation.delete.called
 
     def should_update_tasks_with_removed_next_tasks(self):
         phase, member, parent, main_task, next_task = get_base(self.project)

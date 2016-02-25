@@ -1,6 +1,6 @@
 import json
 import click
-import pysync_redmine.repositories as repos
+import pysync_redmine.repositories as base
 from pysync_redmine.domain import (
                                     RelationSet,
                                     Task,
@@ -11,37 +11,37 @@ import pdb
 
 
 @click.command()
-@click.option('--file', prompt='Enter path of project file',
+@click.option('--filename', prompt='Enter path of project file',
               help='Filename of GanntProject')
-@click.option('--project', prompt='Enter the URL of your project',
-              help='URL of project at Redmine')
+@click.option('--url', prompt='Enter the URL of your project',
+              help='URL of Redmine application')
 @click.option('--user', prompt='Enter your user login at Redmine',
               help='User key how is goint to update system to Redmine')
 @click.option('--password', prompt='Enter your password', hide_input=True)
-def gantt_to_redmine(filename, project_url, user_key, psw):
-    redmine = repos.redmine.RedmineRepo(project_url, user_key, psw)
-    gantt = repos.ganntproject.GanttRepo(filename)
+def run(filename, url, user, password):
 
-    redmine.open_source()
-    gantt.open_source()
+    gantt = base.RepoFactory.create('GanttRepo')
+    redmine = base.RepoFactory.create('RedmineRepo')
 
-    redmine_project = redmine.project
-    gantt_project = gantt.project
+    import os.path
+    if not os.path.isfile(filename):
+        raise(ValueError('Filename doesn t exist'))
+
+    gantt.open_source(filename=filename)
+    tokens = url.split('/')
+    project_key = tokens.pop(-1)
+    tokens.pop(-1)
+    url = '/'.join(tokens)
+
+    redmine.open_source(url=url, username=user, password=password,
+                        project_key=project_key)
 
     syncronizer = Syncronizer()
+    syncronizer.deploy(gantt, redmine)
 
-    syncronizer.deploy(redmine_project, gantt_project)
-
-    data_name = '{}.json'.format(gantt_project.key)
+    data_name = '{}.json'.format(redmine.project.key)
     with open(data_name, 'w') as outfile:
         json.dump(syncronizer.sync_data, outfile)
-
-
-@click.command()
-@click.option('--sync_file', prompt='Enter your sync_file to load:',
-              help='Filename .json with sync data')
-def sync_projects(sync_data_file):
-    pass
 
 
 class Syncronizer:
@@ -49,27 +49,39 @@ class Syncronizer:
         self.projects = None
         if not sync_data:
             sync_data = {
-                            'projects': [], 'tasks': [],
+                            'repositories': [], 'projects': [], 'tasks': [],
                             'members': [], 'phases': []
                             }
         self.sync_data = sync_data
 
-    def copy_project(self, project):
-        self.project.append(project)
-        self.sync_data['projects'].append(project.repository.init)
-        if len(self.projects) > 1:
-            self.deploy(project)
+    def load_repositories(self, sync_data):
+        repositories = []
+        for repo_info in sync_data['repositories']:
+            repository = base.RepoFactory.create(repo_info['class_key'])
+            repository.open_source(**repo_info['setup_pars'])
+            repositories.append(repository)
+
+        self.repositories = repositories
+
+    def add_repository(self, repository):
+
+        for repo_info in self.sync_data['repositories']:
+            if (repo_info['setup_pars'] == repository.setup_pars) and (
+                                repo_info['class_key']== repository.class_key):
+                return
+
+        pars = {'class_key': repository.class_key, 'setup_pars': repository.setup_pars}
+        self.sync_data['repositories'].append(pars)
 
     def deploy(self, from_repo, to_repo):
+        self.add_repository(from_repo)
+        self.add_repository(to_repo)
 
         from_project = from_repo.project
+
+        from_project.load()
+
         to_project = to_repo.project
-
-        from_repo.open_source()
-        from_repo.load_project('project_key')
-        from_repo.close_source()
-
-        to_repo.open_source()
 
         for member in from_project.members.values():
             new_member = member.copy(to_project)
@@ -126,14 +138,19 @@ class Syncronizer:
                                                         ]
                                                     ]
 
+            to_project_task.save()
+
+        # pdb.set_trace()
+        # updating relations on next step, otherwise bug in redmine
+        for task in from_project.tasks.values():
+            to_project_task = to_project.tasks[task_map[task._id]]
             for next_task, delay in task.relations.next_tasks.items():
                 dest_next_task = to_project.tasks[
                                                 task_map[
                                                     next_task._id]
                                                 ]
                 to_project_task.relations.add_next(dest_next_task, delay)
-
             to_project_task.save()
 
-        to_repo.close_source()
-
+if __name__ == '__main__':
+    run()

@@ -34,8 +34,12 @@ setup(
     ],
     package_dir={'pysync_redmine': 'pysync_redmine'},
     include_package_data=True,
-    install_requires=[
+    install_requires=['Click'
     ],
+    entry_points='''
+        [console_scripts]
+        sync_redmine=pysync_redmine.sync:run
+    ''',
     license='MIT',
     zip_safe=False,
     keywords='pysync_redmine',

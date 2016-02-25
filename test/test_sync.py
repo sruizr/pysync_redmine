@@ -1,4 +1,5 @@
 import pytest
+from click.testing import CliRunner
 from unittest.mock import Mock, patch
 from pysync_redmine.domain import (
                                    Repository,
@@ -9,14 +10,81 @@ from pysync_redmine.domain import (
                                    RelationSet,
                                    StringTree
                                    )
-import pysync_redmine.repositories as repos
-from pysync_redmine.sync import Syncronizer
+from pysync_redmine.repositories import RepoFactory
+from pysync_redmine.sync import Syncronizer, run
 import pdb
 
 
+def get_fake_repo():
+    repo = Mock()
+    repo.project = Project('example', repo)
+    project = repo.project
 
-def test_sync_red_ganttproject():
-    pass
+    for i in range(0, 3):
+        member = Member(project, "key_{}".format(i), "fakeRole")
+        member._id = i
+        member.id = i
+        member.save()
+
+    phase = Phase(project, 'phase key 1')
+    phase._id = 1
+    phase.save()
+
+    for i in range(0, 5):
+        task = Task(project)
+        task._id = i
+        task.description = 'Task  {}'.format(i)
+        task.save()
+
+    for i in range(0, 3):
+        task = project.tasks[i]
+        task.phase = phase
+        task.assigned_to = project.members[i]
+        task.save()
+
+    project.tasks[3].assigned_to = project.members[0]
+    project.tasks[4].assigned_to = project.members[1]
+
+    for i in range(1, 3):
+        project.tasks[i].parent = project.tasks[0]
+
+    project.tasks[3].relations.add_next(project.tasks[4])
+
+    node_1 = project.tokens.add_node(['1', '2', '3'])
+    node_2 = project.tokens.add_node(['1', '2', '4'])
+    node_3 = project.tokens.add_node(['3', '4', '5'])
+    node_4 = project.tokens.add_node(['3', '6', '7'])
+
+    project.tasks[0].inputs = [node_1, node_2]
+    project.tasks[0].outputs = [node_3, node_4]
+
+    return repo
+
+
+def should_not_run_if_file_no_exist():
+    # pdb.set_trace()
+    runner = CliRunner()
+    result = runner.invoke(run, ['--filename', 'fake_file.gann', '--url', 'http://redmine.com',
+                           '--user', 'username', '--password', 'pass'])
+    assert result.exit_code == -1
+
+@patch('pysync_redmine.open')
+@patch('pysync_redmine.sync.Syncronizer')
+@patch('pysync_redmine.repositories.RepoFactory')
+def shsould_run_with_all_parameters(mock_sync, mock_factory, mock_open):
+    runner = CliRunner()
+    import os
+    file_name = os.path.join(os.getcwd(), 'test', 'resources', 'example.gan')
+
+    mock_gantt = Mock(class_key='GanttRepo')
+    mock_redmine = Mock(class_key='RedmineRepo')
+    mock_factory.create.side_effect = [mock_gantt, mock_redmine]
+
+
+    result = runner.invoke(run, ['--filename', file_name, '--url', 'http://redmine.com/projects/example',
+                           '--user', 'username', '--password', 'pass'])
+
+    assert result.exit_code == 0
 
 
 class A_Syncronizer:
@@ -25,64 +93,74 @@ class A_Syncronizer:
         self.syncro = Syncronizer()
 
     def should_load_without_sync_file(self):
-        self.syncro = Syncronizer()
         assert hasattr(self.syncro, 'sync_data')
         assert type(self.syncro.sync_data) == dict
         assert hasattr(self.syncro, 'projects')
 
-    def should_load_with_sync_data(self):
-        sync_data = {'fake_sync_data': True}
-        self.syncro = Syncronizer(sync_data)
+    @patch('pysync_redmine.repositories.RepoFactory')
+    def should_load_repositories_with_sync_data(self, mock_factory):
+        sync_data = {'repositories': [
+                                        {
+                                                'class_key': 'fake_class_1',
+                                                'setup_pars': {'par': 123}
+                                        },
+                                        {
+                                                'class_key': 'fake_class_2',
+                                                'setup_pars': {'par': 456}
+                                        }
+                                            ]
+                                }
+        mock_1, mock_2 = [Mock(class_key='fake_class_1'),
+                            Mock(class_key='fake_class_2')]
+        mock_factory.create.side_effect = [mock_1, mock_2]
 
-        pass
+        self.syncro = Syncronizer()
 
-    def create_fake_repo(self):
-        repo = Mock()
-        repo.project = Project('example', repo)
-        project = repo.project
+        self.syncro.load_repositories(sync_data)
 
-        for i in range(0, 3):
-            member = Member(project, "key_{}".format(i), "fakeRole")
-            member._id = i
-            member.id = i
-            member.save()
+        repo_1, repo_2 = self.syncro.repositories
 
-        phase = Phase(project, 'phase key 1')
-        phase._id = 1
-        phase.save()
+        assert repo_1.class_key == 'fake_class_1'
+        assert repo_2.class_key == 'fake_class_2'
+        mock_1.open_source.assert_called_with(
+                                  **sync_data['repositories'][0]['setup_pars']
+                                  )
+        mock_2.open_source.assert_called_with(
+                                  **sync_data['repositories'][1]['setup_pars']
+                                  )
 
-        for i in range(0, 5):
-            task = Task(project)
-            task._id = i
-            task.description = 'Task  {}'.format(i)
-            task.save()
+    def should_add_repository(self):
+        fake_repo = Mock()
+        fake_repo.setup_pars = {'project_key': 'example'}
+        fake_repo.class_key = 'fake_class'
 
-        for i in range(0, 3):
-            task = project.tasks[i]
-            task.phase = phase
-            task.assigned_to = project.members[i]
-            task.save()
+        self.syncro.add_repository(fake_repo)
 
-        project.tasks[3].assigned_to = project.members[0]
-        project.tasks[4].assigned_to = project.members[1]
+        assert self.syncro.sync_data['repositories'][-1]['setup_pars'] == fake_repo.setup_pars
+        assert self.syncro.sync_data['repositories'][-1]['class_key'] == 'fake_class'
 
-        for i in range(1, 3):
-            project.tasks[i].parent = project.tasks[0]
+    # @pytest.raises(AttributeError)
+    def should_avoid_add_repository_without_setup(self):
+        fake_repo = Repository()
+        fake_repo.class_key = 'fake_class'
 
-        project.tasks[3].relations.add_next(project.tasks[4])
+        with pytest.raises(AttributeError):
+            self.syncro.add_repository(fake_repo)
 
-        node_1 = project.tokens.add_node(['1', '2', '3'])
-        node_2 = project.tokens.add_node(['1', '2', '4'])
-        node_3 = project.tokens.add_node(['3', '4', '5'])
-        node_4 = project.tokens.add_node(['3', '6', '7'])
+    def should_avoid_add_duplicated_repos(self):
+        fake_repo = Mock()
+        fake_repo.setup_pars = {'project_key': 'example'}
+        fake_repo.class_key = 'fake_class'
 
-        project.tasks[0].inputs = [node_1, node_2]
-        project.tasks[0].outputs = [node_3, node_4]
+        self.syncro.add_repository(fake_repo)
+        self.syncro.add_repository(fake_repo)
 
-        return repo
+        assert self.syncro.sync_data['repositories'][-1]['setup_pars'] == fake_repo.setup_pars
+        assert self.syncro.sync_data['repositories'][-1]['class_key'] == 'fake_class'
+        assert len(self.syncro.sync_data['repositories']) == 1
 
     def should_deploy_one_repository_to_other(self):
-        origin = self.create_fake_repo()
+        origin = get_fake_repo()
         destination = Mock()
 
         def insert_task(task):
@@ -124,7 +202,7 @@ class A_Syncronizer:
 
         for i in range(0, 2):
             assert (destination.project.tasks[1].inputs[i].path() ==
-                        origin.project.tasks[0].inputs[i].path())
+                    origin.project.tasks[0].inputs[i].path())
             assert (destination.project.tasks[1].outputs[i].path() ==
-                        origin.project.tasks[0].outputs[i].path())
+                    origin.project.tasks[0].outputs[i].path())
 

@@ -1,0 +1,1 @@
+{"repositories": [{"class_key": "GanttRepo", "setup_pars": {"filename": "example.gan"}}, {"class_key": "RedmineRepo", "setup_pars": {"url": "http://unidadfrio.ako.com", "project_key": "sync_example"}}], "tasks": [[1, 493], [2, 494], [3, 495], [4, 496], [5, 497], [6, 498]], "projects": [], "phases": [[0, 44]], "members": [[0, 5]]}

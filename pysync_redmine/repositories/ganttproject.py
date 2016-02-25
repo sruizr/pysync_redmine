@@ -14,15 +14,16 @@ import pdb
 class GanttRepo(Repository):
 
     def __init__(self):
+        self.class_key = 'GanttRepo'
         Repository.__init__(self)
 
-    def open_source(self, project, **setup_pars):
-        self.project = project
-        self.project.repository = self
+    def open_source(self, **setup_pars):
+
         self.setup_pars = setup_pars
-        self.setup_pars['project_key'] = project.key
 
         self.source = ET.parse(setup_pars['filename']).getroot()
+        project_name = self.source.attrib['name']
+        self.project = Project(project_name, self)
 
     def load_members(self):
         project = self.project
@@ -46,6 +47,8 @@ class GanttRepo(Repository):
         self.project.calendar = Calendar()
 
     def load_phases(self):
+
+
         project = self.project
         phases = {}
         resources = self.source.findall('./tasks/task[task]')
@@ -73,9 +76,11 @@ class GanttRepo(Repository):
         project.phases = phases
 
     def load_tasks(self):
+
         project = self.project
         tasks = {}
         resources = self.source.findall('./tasks//task')
+
         for resource in resources:
             if int(resource.attrib['id']) not in project.phases:
                 task = Task(project)
@@ -122,14 +127,16 @@ class GanttRepo(Repository):
 
         resources = self.source.findall('./allocations/allocation')
         for resource in resources:
-            task = project.tasks[int(resource.attrib['task-id'])]
-            member = project.members[int(
-                                         resource.attrib['resource-id']
-                                                        )]
-            if resource.attrib['responsible'] == 'true':
-                task.assigned_to = member
-            else:
-                task.colaborators.append(member)
+            task_id = int(resource.attrib['task-id'])
+            if task_id in project.tasks:
+                task = project.tasks[task_id]
+                member = project.members[int(
+                                             resource.attrib['resource-id']
+                                                            )]
+                if resource.attrib['responsible'] == 'true':
+                    task.assigned_to = member
+                else:
+                    task.colaborators.append(member)
 
         for phase in project.phases.values():
             resources = self.source.findall(

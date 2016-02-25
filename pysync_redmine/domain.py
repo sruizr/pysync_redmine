@@ -145,12 +145,10 @@ class Project:
 
     def load(self):
         if self.repository:
-            self.repository.open_source()
             self.repository.load_calendar()
             self.repository.load_members()
             self.repository.load_phases()
             self.repository.load_tasks()
-            self.repository.close_source()
 
     def save(self):
         for member in self.members:
@@ -341,13 +339,13 @@ class Calendar(Persistent):
     def get_end_date(self, start_date, duration):
         end_date = start_date
         counter = 0
-        while True:
+        while counter+1 < duration:
             end_date = end_date + datetime.timedelta(days=1)
             if (end_date.weekday() not in self.weekend and
                     end_date not in self.free_days):
                 counter += 1
-            if counter == duration:
-                return end_date
+
+        return end_date
 
     def get_duration(self, start_date, end_date):
         if start_date is None or end_date is None:

@@ -5,7 +5,9 @@ from pysync_redmine.domain import (
                                    RelationSet,
                                    Phase,
                                    Member,
-                                   StringTree)
+                                   StringTree,
+                                   Calendar)
+import datetime
 import pdb
 
 
@@ -84,3 +86,41 @@ class A_StringTree:
         assert len(root.childs) == 1
         assert new_node.parent == node
         assert new_node.path() == ['root', '1', '2', '3']
+
+
+class A_Calendar:
+    def setup_method(self, method):
+        self.calendar = Calendar()
+        self.start_date = [
+                datetime.date(2016, 2, 10),
+                datetime.date(2016, 2, 15),
+                datetime.date(2016, 2, 15),
+                datetime.date(2016, 2, 3)
+                ]
+        self.end_date = [
+                datetime.date(2016, 2, 12),
+                datetime.date(2016, 2, 15),
+                datetime.date(2016, 2, 15),
+                datetime.date(2016, 2, 9)
+                ]
+        self.duration = [3, 1, 0, 5]
+
+    def should_calculate_end_date(self):
+
+        for i in range(0, 4):
+            assert self.end_date[i] == self.calendar.get_end_date(
+                                               self.start_date[i], self.duration[i])
+
+    def not_yet_should_calculate_duration(self):
+        r = [0, 1, 3]
+        for i in r:
+            assert self.duration[i] == self.calendar.get_duration(
+                                        self.start_date[i], self.end_date[i])
+
+    def not_yet_should_calculate_start_date(self):
+        r = [0, 1, 3]
+        for i in r:
+            assert self.start_date[i] == self.calendar.get_start_date(
+                                        self.duration[i], self.end_date[i])
+
+
