@@ -206,15 +206,16 @@ class RedmineRepo(Repository):
 
         relations = self.source.issue_relation.filter(issue_id=task._id)
         for relation in relations:
-            if (relation.relation_type == 'precedes') and (relation.issue_id == task._id):
+            if (relation.relation_type == 'precedes') and (
+                                                relation.issue_id == task._id):
                 current_relations[tasks[relation.issue_to_id]] = relation
-            if (relation.relation_type == 'follows') and (relation.issue_to_id == task._id):
+            if (relation.relation_type == 'follows') and (
+                                          relation.issue_to_id == task._id):
                 current_relations[tasks[relation.issue_id]] = relation
 
         for next_task, delay in task.relations.next_tasks.items():
             if next_task in current_relations:
                 if delay != current_relations[next_task].delay:
-                    pdb.set_trace()
                     self.source.issue_relation.delete(
                                                current_relations[next_task].id
                                                )
@@ -230,7 +231,6 @@ class RedmineRepo(Repository):
 
         # delete task relation if no exist in self.project, bug it seems enter always..
         for next_task, relation in current_relations.items():
-            pdb.set_trace()
             if next_task not in task.relations.next_tasks:
                 self.source.issue_relation.delete(relation.id)
 

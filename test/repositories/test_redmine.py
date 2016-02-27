@@ -198,7 +198,7 @@ class A_RedmineRepo:
 
         self.repo.insert_phase(phase)
 
-        pars ={
+        pars = {
                     'project_id': 123,
                     'name': phase.key,
                     'description': phase.description,
@@ -238,7 +238,7 @@ class A_RedmineRepo:
             'project_id': 123,
             'subject': 'task description',
             'start_date': datetime.date(2016, 1, 4),
-            'due_date': datetime.date(2016, 1, 5),
+            'due_date': datetime.date(2016, 1, 4),
             'done_ratio': 75,
             'description': description
         }
@@ -267,7 +267,7 @@ class A_RedmineRepo:
         pars = {
             'subject': 'Final description',
             'start_date': main_task.start_date,
-            'due_date': datetime.date(2016, 1, 8),
+            'due_date': datetime.date(2016, 1, 7),
             'done_ratio': 100,
             'fixed_version_id': phase._id,
             'assigned_to_id': member._id,
@@ -291,6 +291,7 @@ class A_RedmineRepo:
 
         mock_relation = Mock()
         mock_relation.id = 1000
+        mock_relation.issue_id = main_task._id
         mock_relation.issue_to_id = next_task._id
         mock_relation.relation_type = 'precedes'
         self.source.issue_relation.filter.return_value = [mock_relation]
@@ -301,11 +302,11 @@ class A_RedmineRepo:
 
     def should_update_tasks_with_changed_delays(self):
         phase, member, parent, main_task, next_task = get_base(self.project)
-
         main_task.relations.add_next(next_task, 1)
 
         mock_relation = Mock()
         mock_relation.id = 1000
+        mock_relation.issue_id = main_task._id
         mock_relation.issue_to_id = next_task._id
         mock_relation.relation_type = 'precedes'
         mock_relation.delay = 0
