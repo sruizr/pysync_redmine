@@ -1,12 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?><project name="example" company="Public and Free" webLink="http://sruiz.es" view-date="2016-01-28" view-index="1" gantt-divider-location="1314" resource-divider-location="300" version="2.7.1" locale="es">
+<?xml version="1.0" encoding="UTF-8"?><project name="example" company="Public and Free" webLink="http://sruiz.es" view-date="2016-01-25" view-index="0" gantt-divider-location="11" resource-divider-location="300" version="2.7.1" locale="es">
     <description><![CDATA[This an example of project from GanntProject release 2.7]]></description>
-    <view zooming-state="default:3" id="gantt-chart">
-        <field id="tpd3" name="Nombre" width="23" order="0"/>
+    <view zooming-state="default:4" id="gantt-chart">
+        <field id="tpd3" name="Nombre" width="14" order="0"/>
         <field id="tpd4" name="Fecha de inicio" width="14" order="1"/>
-        <field id="tpd5" name="Fecha de fin" width="21" order="2"/>
-        <field id="tpd13" name="Recursos" width="11" order="5"/>
-        <field id="tpc0" name="inputs" width="15" order="3"/>
-        <field id="tpc1" name="outputs" width="15" order="4"/>
+        <field id="tpd5" name="Fecha de fin" width="14" order="2"/>
+        <field id="tpd10" name="ID" width="14" order="6"/>
+        <field id="tpd13" name="Recursos" width="14" order="5"/>
+        <field id="tpc0" name="inputs" width="14" order="3"/>
+        <field id="tpc1" name="outputs" width="14" order="4"/>
         <option id="taskLabelRight" value="name"/>
     </view>
     <view id="resource-table">
@@ -50,7 +51,7 @@
                     <customproperty taskproperty-id="tpc1" value="Salida 1, Salida 2"/>
                 </task>
             </task>
-            <task id="4" name="Task without subtasks" meeting="false" start="2016-02-15" duration="1" complete="0" expand="true">
+            <task id="4" name="Task without subtasks" color="#8cb6ce" meeting="false" start="2016-02-15" duration="1" complete="0" expand="true">
                 <depend id="6" type="2" difference="0" hardness="Strong"/>
             </task>
             <task id="6" name="Milestone" color="#8cb6ce" meeting="true" start="2016-02-16" duration="0" complete="0" expand="true"/>
@@ -73,17 +74,17 @@
         <displaycolumn property-id="tpd8" order="-1" width="75" visible="false"/>
         <displaycolumn property-id="tpd12" order="-1" width="75" visible="false"/>
         <displaycolumn property-id="tpd6" order="-1" width="75" visible="false"/>
-        <displaycolumn property-id="tpd3" order="0" width="305" visible="true"/>
-        <displaycolumn property-id="tpd4" order="1" width="185" visible="true"/>
-        <displaycolumn property-id="tpd5" order="2" width="277" visible="true"/>
-        <displaycolumn property-id="tpd10" order="-1" width="75" visible="false"/>
+        <displaycolumn property-id="tpd3" order="0" width="15" visible="true"/>
+        <displaycolumn property-id="tpd4" order="1" width="15" visible="true"/>
+        <displaycolumn property-id="tpd5" order="2" width="15" visible="true"/>
+        <displaycolumn property-id="tpd10" order="6" width="15" visible="true"/>
         <displaycolumn property-id="tpd11" order="-1" width="75" visible="false"/>
         <displaycolumn property-id="tpd1" order="-1" width="75" visible="false"/>
         <displaycolumn property-id="tpd7" order="-1" width="75" visible="false"/>
-        <displaycolumn property-id="tpd13" order="5" width="145" visible="true"/>
+        <displaycolumn property-id="tpd13" order="5" width="15" visible="true"/>
         <displaycolumn property-id="tpd0" order="-1" width="75" visible="false"/>
-        <displaycolumn property-id="tpc0" order="3" width="200" visible="true"/>
-        <displaycolumn property-id="tpc1" order="4" width="198" visible="true"/>
+        <displaycolumn property-id="tpc0" order="3" width="15" visible="true"/>
+        <displaycolumn property-id="tpc1" order="4" width="15" visible="true"/>
     </taskdisplaycolumns>
     <previous/>
     <roles roleset-name="Default"/>
