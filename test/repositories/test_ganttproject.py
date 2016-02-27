@@ -95,7 +95,7 @@ class A_GanttRepo:
         phase = self.project.phases[0]
         assert phase._id == 0
         assert phase.key == 'ABC'
-        assert phase.due_date == datetime.date(2016, 1, 14)
+        assert phase.due_date == datetime.date(2016, 1, 13)
         assert phase.description == 'Phase description'
 
     def should_load_members(self):
