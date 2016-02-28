@@ -13,6 +13,10 @@ import datetime
 import pdb
 
 
+def get_fake_redmine():
+    redmine = Mock()
+
+
 class A_RedmineRepo:
 
     def setup_method(self, method):
@@ -137,7 +141,6 @@ class A_RedmineRepo:
         pars = {'project_id': self.project._id}
         self.source.version.filter.assert_called_with(project_id=self.project._id)
 
-        # pdb.set_trace()
         for i in range(1, 3):
             phase = self.project.phases[i]
             assert phase._id == i
@@ -151,10 +154,12 @@ class A_RedmineRepo:
             issue = Mock()
             issue.id = i
             issue.subject = 'description {}'.format(i)
-
             issues.append(issue)
 
         self.source.issue.filter.return_value = issues
+
+
+
 
     def should_insert_member(self):
         member = Member(self.project, 'user_key',

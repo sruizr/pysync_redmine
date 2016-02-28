@@ -47,8 +47,6 @@ class GanttRepo(Repository):
         self.project.calendar = Calendar()
 
     def load_phases(self):
-
-
         project = self.project
         phases = {}
         resources = self.source.findall('./tasks/task[task]')
