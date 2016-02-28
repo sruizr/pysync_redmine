@@ -16,6 +16,61 @@ import pdb
 def get_fake_redmine():
     redmine = Mock()
 
+    project = Mock()
+    project.name = example
+    project.id = 1
+    redmine.project.get.return_value = project
+
+    roles = [Mock(id=i) for i in range(0, 3)]
+    names = ['Project manager', 'Developer', 'Tester']
+    for i in range(0,3):
+        roles[i].name = names[i]
+    redmine.role.all.return_value = roles
+
+    members = [Mock(id=i) for i in range(0, 2)]
+    role_ids = [1, 2]
+    user_ids = [0, 1]
+    for member in members:
+        member.user_id = user_ids[member.id]
+        member.role_ids = role_ids
+    redmine.member_ship.filter.return_value = members
+
+    users = [Mock(id=i) for i in range(0, 2)]
+    logins = ['leader', 'worker']
+    for user in users:
+        user.login = logins[user.id]
+    redmine.user.get.side_effect = lambda x: users[x]
+
+    version = Mock()
+    version.project_id = 1
+    version.name = "PHA"
+    version.description = "Phase description"
+    version.due_date = datetime.date(2016, 2, 15)
+    redmine.version.filter.return_value = [version]
+
+    parent_issue = Mock(id=1, subject='Parent task',
+                        start_date=datetime.date(2016, 2, 15),
+                        due_date=datetime.date(2015, 2, 23),
+                        assigned_to=0,
+                        description='No parsed description',
+                        parent_issue_id=None, fixed_version_id=1)
+    sub_issue = Mock(id=2, subject='Sub task',
+                     start_date=datetime.date(2016, 2, 15),
+                     due_date=datetime.date(2015, 2, 20),
+                     assigned_to=1,
+                     description=self._get_issue_description(),
+                     parent_issue_id=1, fixed_version_id=1)
+    alone_task = Mock(id=3, subject='Task without phase',
+                       start_date=datetime.date(2016, 2, 21),
+                       due_date=datetime.date(2015, 2, 21),
+                       assigned_to=None,
+                       description=None,
+                       parent_issue_id=None, fixed_version_id=None)
+    redmine.issue.filter.return_value = [parent_issue, sub_issue, alone_task]
+
+    relation = Mock(issue_id=1, issue_to_id=3, relation_type='precedes',
+                    delay=1)
+    redmine.relation.filter.return_value = [relation]
 
 class A_RedmineRepo:
 
