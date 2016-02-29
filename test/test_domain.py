@@ -92,22 +92,24 @@ class A_Calendar:
     def setup_method(self, method):
         self.calendar = Calendar()
         self.start_date = [
+                datetime.date(2016, 2, 3),
                 datetime.date(2016, 2, 10),
                 datetime.date(2016, 2, 15),
                 datetime.date(2016, 2, 15),
                 datetime.date(2016, 2, 3)
                 ]
         self.end_date = [
+                datetime.date(2016, 2, 15),
                 datetime.date(2016, 2, 12),
                 datetime.date(2016, 2, 15),
                 datetime.date(2016, 2, 15),
                 datetime.date(2016, 2, 9)
                 ]
-        self.duration = [3, 1, 0, 5]
+        self.duration = [9, 3, 1, 0, 5]
 
     def should_calculate_end_date(self):
 
-        for i in range(0, 4):
+        for i in range(0, 5):
             assert self.end_date[i] == self.calendar.get_end_date(
                                                self.start_date[i], self.duration[i])
 

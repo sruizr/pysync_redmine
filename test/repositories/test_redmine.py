@@ -8,7 +8,7 @@ from pysync_redmine.domain import (
                                    Member,
                                    Calendar
                                    )
-from helper import get_basic_frame as get_base
+from helper import load_project_base as load_base
 from helper import get_mock_source_redmine, get_issue_description
 import datetime
 import pdb
@@ -155,9 +155,6 @@ class A_RedmineRepo:
 
         self.source.issue.filter.return_value = issues
 
-
-
-
     def should_insert_member(self):
         member = Member(self.project, 'user_key',
                         *['master chef'])
@@ -223,7 +220,7 @@ class A_RedmineRepo:
         input_1 = root.add_node(['1', '2', '3'])
         input_2 = root.add_node(['1', '2', '4'])
         output_1 = root.add_node(['1', '5'])
-        output_2 = root.add_node(['1', '6'])
+        output_2 = root.add_node(['6'])
         task.inputs = [input_1, input_2]
         task.outputs = [output_1, output_2]
 
@@ -249,7 +246,12 @@ class A_RedmineRepo:
 
     def should_update_task_update_main_fields_and_new_nexts(self):
 
-        phase, member, parent, main_task, next_task = get_base(self.project)
+        load_base(self.project)
+        main_task = self.project.tasks[6]
+        next_task = self.project.tasks[3]
+        member = self.project.members[1]
+        parent = self.project.tasks[1]
+        phase = self.project.phases[0]
 
         # Updating changes
         main_task.description = 'Final description'
@@ -262,7 +264,12 @@ class A_RedmineRepo:
 
         main_task.relations.add_next(next_task, 0)
 
-        self.source.issue_relation.filter.return_value = []
+        mock_relation = Mock()
+        mock_relation.issue_id = 6
+        mock_relation.issue_to_id = 1
+        mock_relation.relation_type = 'precedes'
+        mock_relation.delay = 0
+        self.source.issue_relation.filter.return_value = [mock_relation]
 
         self.repo.update_task(main_task)
 
@@ -275,7 +282,7 @@ class A_RedmineRepo:
             'assigned_to_id': member._id,
             'parent_issue_id': parent._id
         }
-        self.source.issue.update.assert_called_with(1, **pars)
+        self.source.issue.update.assert_called_with(main_task._id, **pars)
 
         pars = {
             'issue_id': main_task._id,
@@ -289,7 +296,9 @@ class A_RedmineRepo:
         assert not self.source.issue_relation.delete.called
 
     def should_update_tasks_with_removed_next_tasks(self):
-        phase, member, parent, main_task, next_task = get_base(self.project)
+        load_base(self.project)
+        main_task = self.project.tasks[6]
+        next_task = self.project.tasks[3]
 
         mock_relation = Mock()
         mock_relation.id = 1000
@@ -303,7 +312,9 @@ class A_RedmineRepo:
         self.source.issue_relation.delete.assert_called_with(mock_relation.id)
 
     def should_update_tasks_with_changed_delays(self):
-        phase, member, parent, main_task, next_task = get_base(self.project)
+        load_base(self.project)
+        main_task = self.project.tasks[6]
+        next_task = self.project.tasks[1]
         main_task.relations.add_next(next_task, 1)
 
         mock_relation = Mock()

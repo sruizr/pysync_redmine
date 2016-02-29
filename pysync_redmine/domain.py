@@ -6,7 +6,7 @@ import pdb
 class StringTree:
     def __init__(self, name='/', parent=None):
         self._parent = None
-        self.childs = set()
+        self._childs = set()
 
         # pdb.set_trace()
         if isinstance(name, str):
@@ -30,14 +30,19 @@ class StringTree:
 
         return parent
 
+    @property
+    def childs(self):
+        value = list(self._childs)
+        return sorted(value,  key=lambda x: x.name)
+
     @parent.setter
     def parent(self, value):
         if self._parent:
             if self in self._parent.childs:
-                self._parent.childs.remove(self)
+                self._parent._childs.remove(self)
         self._parent = value
         if value:
-            value.childs.add(self)
+            value._childs.add(self)
 
     def add_node(self, path):
         if isinstance(path, str):
@@ -274,8 +279,6 @@ class Task(Persistent):
         new_task.duration = self.duration
         new_task.complete = self.complete
 
-
-
         return new_task
 
     def __str__(self):
@@ -332,7 +335,7 @@ class Member(Persistent):
 
 
 class Calendar(Persistent):
-    def __init__(self, weekend=[6, 0]):
+    def __init__(self, weekend=[5, 6]):
             self.weekend = weekend
             self.free_days = []
 

@@ -36,16 +36,16 @@ class A_GanttRepo:
         assert len(self.project.phases) == 1
         phase = self.project.phases[0]
         assert phase._id == 0
-        assert phase.key == 'ABC'
-        assert phase.due_date == datetime.date(2016, 1, 13)
+        assert phase.key == 'PHA'
         assert phase.description == 'Phase description'
+        assert phase.due_date == datetime.date(2016, 2, 15)
 
     def should_load_members(self):
         self.repo.load_members()
 
-        assert len(self.project.members) == 4
+        assert len(self.project.members) == 3
         member = self.project.members[0]
-        assert member.key == 'leader'
+        assert member.key == 'A_project_leader'
         assert member.roles == {'Project Leader'}
         assert member.project == self.project
         assert member._id == 0
@@ -61,30 +61,35 @@ class A_GanttRepo:
 
         phase = self.project.phases[0]
         parent = self.project.tasks[1]
-        subtask = self.project.tasks[2]
-        alone = self.project.tasks[3]
+        subtask1 = self.project.tasks[2]
+        subtask2 = self.project.tasks[3]
+        alone = self.project.tasks[4]
+        milestone = self.project.tasks[5]
+        orphan = self.project.tasks[6]
+
         leader = self.project.members[0]
         developer = self.project.members[1]
-        no_one = self.project.members[2]
+        verifier = self.project.members[2]
 
-        assert len(self.project.tasks) == 3
-        assert len(parent.subtasks) == 1
+        assert len(self.project.tasks) == 6
+        assert len(parent.subtasks) == 2
 
-        assert parent.subtasks[0] == subtask
+        assert parent.subtasks[0] == subtask1
+        assert parent.subtasks[1] == subtask2
         assert parent.assigned_to == leader
 
-        assert subtask.parent == parent
-        assert subtask.phase == phase
-        assert subtask.assigned_to == developer
-        assert subtask.relations.next_tasks[alone] == 5
-        assert len(subtask.colaborators) == 1
-        assert no_one == subtask.colaborators[0]
+        assert subtask2.parent == parent
+        assert subtask2.phase == phase
+        assert subtask2.assigned_to == verifier
+        assert subtask2.relations.next_tasks[alone] == 0
+        assert len(subtask2.colaborators) == 1
+        assert developer == subtask2.colaborators[0]
 
-        assert alone.parent is None
-        assert alone.phase is None
-        assert alone.assigned_to is None
+        assert orphan.parent is None
+        assert orphan.phase is None
+        assert orphan.assigned_to is None
 
-        assert len(alone.inputs) == 2
-        assert len(alone.outputs) == 2
+        assert len(subtask2.inputs) == 2
+        assert len(subtask2.outputs) == 2
         # print(self.project.tokens._str_level(1))
         assert len(self.project.tokens.childs) == 2
