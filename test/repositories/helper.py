@@ -40,7 +40,7 @@ def load_members_for_testing(project):
 
 
 def load_tasks_for_testing(project):
-        task_descriptions = ['Task with  subtasks', 'Subtask 1', 'Subtask 2',
+        task_descriptions = ['Task with subtasks', 'Subtask 1', 'Subtask 2',
                     'Task without subtasks', 'Milestone', 'Task without phase']
         start_dates = [date(2016, 2, 3), date(2016, 2, 3), date(2016, 2, 10),
                         date(2016, 2, 15), date(2016, 2, 16), date(2016, 2, 1)]
@@ -52,7 +52,7 @@ def load_tasks_for_testing(project):
                 task.description = task_descriptions[i]
                 task.start_date = start_dates[i]
                 task.duration = durations[i]
-                task.complet = completes[i]
+                task.complete = completes[i]
                 task._id = i + 1
                 task.save()
 
@@ -110,6 +110,7 @@ h3. Outputs
 ------"""
         return description
 
+
 def get_mock_source_redmine():
     redmine = Mock()
 
@@ -119,7 +120,7 @@ def get_mock_source_redmine():
     redmine.project.get.return_value = project
 
     roles = [Mock(id=i) for i in range(0, 3)]
-    names = ['Project manager', 'Developer', 'Tester']
+    names = ['Project manager', 'Developer', 'Verifier']
     for i in range(0, 3):
         roles[i].name = names[i]
     redmine.role.all.return_value = roles
@@ -132,38 +133,63 @@ def get_mock_source_redmine():
         member.role_ids = role_ids
     redmine.member_ship.filter.return_value = members
 
-    users = [Mock(id=i) for i in range(0, 2)]
-    logins = ['leader', 'worker']
+    users = [Mock(id=i) for i in range(0, 3)]
+    logins = ['A_project_leader', 'A_developer', 'A_verifier']
     for user in users:
         user.login = logins[user.id]
     redmine.user.get.side_effect = lambda x: users[x]
 
     version = Mock()
-    version.project_id = 1
+    version.project_id = 0
     version.name = "PHA"
     version.description = "Phase description"
     version.due_date = date(2016, 2, 15)
     redmine.version.filter.return_value = [version]
 
-    parent_issue = Mock(id=1, subject='Parent task',
-                        start_date=date(2016, 2, 15),
-                        due_date=date(2015, 2, 23),
+    parent_issue = Mock(id=1, subject='Task with subtasks',
+                        start_date=date(2016, 2, 3),
+                        due_date=date(2015, 2, 12),
                         assigned_to=0,
+                        done_ratio=12,
                         description='No parsed description',
-                        parent_issue_id=None, fixed_version_id=1)
-    sub_issue = Mock(id=2, subject='Sub task',
-                     start_date=date(2016, 2, 15),
-                     due_date=date(2015, 2, 20),
+                        parent_issue_id=None, fixed_version_id=0)
+    sub_issue1 = Mock(id=2, subject='Subtask 1',
+                     start_date=date(2016, 2, 3),
+                     due_date=date(2015, 2, 9),
                      assigned_to=1,
+                     done_ratio=12,
                      description=get_issue_description(),
-                     parent_issue_id=1, fixed_version_id=1)
-    alone_task = Mock(id=3, subject='Task without phase',
-                       start_date=date(2016, 2, 21),
-                       due_date=date(2015, 2, 21),
-                       assigned_to=None,
-                       description=None,
-                       parent_issue_id=None, fixed_version_id=None)
-    redmine.issue.filter.return_value = [parent_issue, sub_issue, alone_task]
+                     parent_issue_id=1, fixed_version_id=0)
+    sub_issue2 = Mock(id=3, subject='Subtask 2',
+                     start_date=date(2016, 2, 10),
+                     due_date=date(2015, 2, 12),
+                     assigned_to=1,
+                     done_ratio=12,
+                     description=get_issue_description(),
+                     parent_issue_id=1, fixed_version_id=0)
+    alone_task = Mock(id=4, subject='Task without subtasks',
+                            start_date=date(2016, 2, 15),
+                            due_date=date(2015, 2, 15),
+                            assigned_to=None,
+                            done_ratio=12,
+                            description=None,
+                            parent_issue_id=None, fixed_version_id=0)
+    milestone = Mock(id=5, subject='Milestone',
+                            start_date=date(2016, 2, 16),
+                            due_date=date(2015, 2, 16),
+                            assigned_to=None,
+                            done_ratio=0,
+                            description=None,
+                            parent_issue_id=None, fixed_version_id=0)
+    orphan = Mock(id=6, subject='Task without phase',
+                            start_date=date(2016, 2, 1),
+                            due_date=date(2015, 2, 2),
+                            assigned_to=None,
+                            done_ratio=100,
+                            description=None,
+                            parent_issue_id=None, fixed_version_id=None)
+    redmine.issue.filter.return_value = [parent_issue, sub_issue1,
+                                sub_issue2, milestone, orphan, alone_task]
 
     relation = Mock(issue_id=1, issue_to_id=3, relation_type='precedes',
                     delay=1)
@@ -239,6 +265,5 @@ def get_mock_source_gantt():
     ET.SubElement(allocations, 'allocation', {
                   'task-id': '3', 'resource-id': '1', 'function': '2',
                   'responsible': 'false'})
-
 
     return source
