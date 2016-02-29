@@ -1,5 +1,3 @@
-
-import pytest
 from unittest.mock import Mock, patch
 from pysync_redmine.repositories.ganttproject import GanttRepo
 from pysync_redmine.domain import (
@@ -9,7 +7,7 @@ from pysync_redmine.domain import (
                                    Member,
                                    )
 import datetime
-import xml.etree.ElementTree as ET
+from helper import get_mock_source_gantt
 import pdb
 
 
@@ -21,68 +19,12 @@ class A_GanttRepo:
         element_tree = self.patcher.start()
         root = Mock()
         element_tree.return_value = root
-        root.getroot.return_value = self.get_fake_source()
+        root.getroot.return_value = get_mock_source_gantt()
 
         self.repo = GanttRepo()
         self.repo.open_source(filename='fake_file.gan')
         self.repo.load_calendar()
         self.project = self.repo.project
-
-    def get_fake_source(self):
-        source = ET.Element('project', {'name': 'example'})
-
-        roles = ET.SubElement(source, 'roles')
-        ET.SubElement(roles, 'role', {'id': '1', 'name': 'Project Leader'})
-        ET.SubElement(roles, 'role', {'id': '2', 'name': 'Developer'})
-        ET.SubElement(roles, 'role', {'id': '3', 'name': 'Verifier'})
-
-        resources = ET.SubElement(source, 'resources')
-        ET.SubElement(resources, 'resource', {'id': '0', 'name': 'leader',
-                      'function': '1'})
-        ET.SubElement(resources, 'resource', {'id': '1', 'name': 'developer',
-                      'function': '2'})
-        ET.SubElement(resources, 'resource', {'id': '2', 'name': 'verifier',
-                      'function': '3'})
-        ET.SubElement(resources, 'resource', {'id': '3', 'name': 'none',
-                      'function': '0'})
-
-        tasks = ET.SubElement(source, 'tasks')
-        phase = ET.SubElement(tasks, 'task', {'id': '0', 'name': 'ABC. Phase description',
-                              'start': '2016-01-04', 'duration': '8', 'complete': '87'})
-        parent = ET.SubElement(phase, 'task', {'id': '1', 'name': 'Parent task',
-                               'start': '2016-01-04', 'duration': '3', 'complete': '87'})
-        subtask = ET.SubElement(parent, 'task', {'id': '2', 'name': 'subtask task',
-                               'start': '2016-01-04', 'duration': '3', 'complete': '90'})
-        ET.SubElement(subtask, 'depend', {'id': '3', 'difference': '5'})
-        ET.SubElement(subtask, 'custom')
-        alone = ET.SubElement(tasks, 'task', {'id': '3', 'name': 'Task without phase',
-                               'start': '2016-01-04', 'duration': '3', 'complete': '100'})
-
-        inputs = 'one item // with section, alone item'
-        outputs = 'one item // with //several sections, alone item'
-        ET.SubElement(alone, 'customproperty',
-                      {'taskproperty-id': 'tpc0', 'value': inputs})
-        ET.SubElement(alone, 'customproperty',
-                      {'taskproperty-id': 'tpc1', 'value': outputs})
-
-        allocations = ET.SubElement(source, 'allocations')
-        ET.SubElement(allocations, 'allocation', {
-                      'task-id': '1', 'resource-id': '0', 'function': '1',
-                      'responsible': 'true'})
-        ET.SubElement(allocations, 'allocation', {
-                      'task-id': '2', 'resource-id': '1', 'function': '3',
-                      'responsible': 'true'})
-        ET.SubElement(allocations, 'allocation', {
-                      'task-id': '2', 'resource-id': '2', 'function': '2',
-                      'responsible': 'false'})
-
-        taskproperties = ET.SubElement(tasks, 'taskproperties')
-        ET.SubElement(taskproperties, 'taskproperty',
-                        {'id': 'tpc0', 'name': 'inputs'})
-        ET.SubElement(taskproperties, 'taskproperty',
-                        {'id': 'tpc1', 'name': 'outputs'})
-
-        return source
 
     def teardown_method(self, method):
         self.patcher.stop()
