@@ -353,9 +353,13 @@ class Calendar(Persistent):
     def get_duration(self, start_date, end_date):
         if start_date is None or end_date is None:
             return None
-
-        delta = end_date - start_date
-        return delta.days
+        counter = 1
+        while end_date > start_date:
+            end_date = end_date - datetime.timedelta(days=1)
+            if (end_date.weekday() not in self.weekend and
+                    end_date not in self.free_days):
+                counter += 1
+        return counter
 
     def get_start_date(self, duration, end_date):
         pass

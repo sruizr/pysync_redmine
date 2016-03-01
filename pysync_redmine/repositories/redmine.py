@@ -16,7 +16,7 @@ class ResourceWrapper:
                     'issue': [
                                 "due_date", "start_date",
                                 'parent_issue_id', 'fixed_version_id',
-                                'assigned_to_id'
+                                'assigned_to_id', "done_ratio", 'description'
                                 ],
                     'version': ['due_date', 'desription', 'name', 'id']
                     }
@@ -65,41 +65,48 @@ class RedmineRepo(Repository):
     def load_calendar(self):
         self.project.calendar = Calendar()
 
-    def load_tasks(self, project):
-        issues = self.source.issue.filter(project_id=project._id)
+    def load_tasks(self):
+        issues = self.source.issue.filter(project_id=self.project._id)
+        tasks = self.project.tasks
         for issue in issues:
             issue = ResourceWrapper(issue, "issue")
-            task = self.new_task()
+            task = Task(self.project)
             task._id = issue.id
             task.description = issue.subject
             task.start_date = issue.start_date
-            task.duration = self.calendar.get_duration(issue.start_date,
+            task.duration = self.project.calendar.get_duration(issue.start_date,
                                                        issue.due_date)
-            if issue.assigned_to_id:
-                task.assigned_to = self.members[issue.assigned_to_id]
-            if issue.fixed_version_id:
-                task.phase = self.phases[issue.fixed_version_id]
+            # pdb.set_trace()
+            if issue.assigned_to_id is not None:
+                task.assigned_to = self.project.members[issue.assigned_to_id]
+            if issue.fixed_version_id is not None:
+                task.phase = self.project.phases[issue.fixed_version_id]
             task.complete = issue.done_ratio
+            tasks[task._id] = task
 
-            self.tasks[task._id] = task
+        for issue in issues:
+            if issue.parent_issue_id is not None:
+                tasks[issue.id].parent = tasks[issue.parent_issue_id]
+
+
+            task._snap()
 
     def load_members(self):
         roles = self.source.role.all()
-        users = self.source.user.all()
         member_ships = self.source.member_ship.filter(
                                                   project_id=self.project._id
                                                   )
 
-        for member_ship in member_ships.values():
-            user = users[member_ship.user_id]
-            project_roles = [roles[r].name for r in member_ship.roles_id]
+        for member_ship in member_ships:
+            user = self.source.user.get(member_ship.user_id)
+            project_roles = [roles[r].name for r in member_ship.role_ids]
             member = Member(self.project, user.login, *project_roles)
             member._id = user.id
             self.project.members[member._id] = member
 
     def load_phases(self):
         versions = self.source.version.filter(project_id=self.project._id)
-        for version in versions.values():
+        for version in versions:
             phase = Phase(self.project)
             # pdb.set_trace()
             version = ResourceWrapper(version, 'version')

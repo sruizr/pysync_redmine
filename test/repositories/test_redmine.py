@@ -9,7 +9,12 @@ from pysync_redmine.domain import (
                                    Calendar
                                    )
 from helper import load_project_base as load_base
-from helper import get_mock_source_redmine, get_issue_description
+from helper import (
+                    get_mock_source_redmine,
+                    get_issue_description,
+                    load_phases_for_testing,
+                    load_members_for_testing
+                    )
 import datetime
 import pdb
 
@@ -28,6 +33,7 @@ class A_RedmineRepo:
                               username='user', password='psw')
         self.project = self.repo.project
         self.project._id = 123
+        self.repo.load_calendar()
 
     def teardown_method(self, method):
         self.patcher.stop()
@@ -84,76 +90,86 @@ class A_RedmineRepo:
                                                 password='pswww')
 
     def should_load_members(self):
-        member_ships = dict()
-        for i in range(0, 4):
-            member_ships[i] = Mock()
-            member_ships[i].user_id = i+1
-            member_ships[i].roles_id = [r for r in range(0, i+1)]
-        self.source.member_ship.filter.return_value = member_ships
-
-        roles = dict()
-        for i in range(0, 4):
-            roles[i] = Mock()
-            roles[i].name = 'name {}'.format(i)
-            roles[i].id = i
-        self.source.role.all.return_value = roles
-
-        users = dict()
-        for i in range(1, 5):
-            users[i] = Mock()
-            users[i].id = i
-            users[i].login = 'user{}'.format(i)
-        self.source.user.all.return_value = users
 
         self.repo.load_members()
+
         project = self.repo.project
-        roles = list(roles.values())
-        for i in range(1, 5):
+        keys = ['A_project_leader', 'A_developer']
+        roles = ['Developer', 'Verifier']
+        for i in range(0, 2):
             member = project.members[i]
             assert member._id == i
-            assert member.key == 'user{}'.format(i)
-            assert member.roles == set([r.name for r in roles[0:i]])
+            assert member.key == keys[i]
+            assert member.roles == set([roles[i]])
 
         pars = {'project_id': self.project._id}
         self.source.member_ship.filter.assert_called_with(**pars)
         self.source.role.all.assert_called_with()
-        self.source.user.all.assert_called_with()
+
+    @patch('pysync_redmine.repositories.redmine.ResourceWrapper')
+    def should_load_tasks(self, mock_wrapper):
+        project = self.repo.project
+
+        load_phases_for_testing(project)
+        load_members_for_testing(project)
+        mock_wrapper.side_effect = lambda x, y: x
+
+        self.repo.load_tasks()
+
+        self.repo.source.issue.filter.assert_called_with(
+                                                         project_id=project._id
+                                                         )
+        tasks = project.tasks
+
+        assert len(tasks) == 6
+        task_descriptions = ['Task with subtasks', 'Subtask 1', 'Subtask 2',
+                                'Task without subtasks', 'Milestone',
+                                'Task without phase']
+        for i in range(1, 7):
+            assert tasks[i].description == task_descriptions[i-1]
+
+        parent = tasks[1]
+        subtask_1 = tasks[2]
+        subtask_2 = tasks[3]
+        alone = tasks[4]
+        milestone = tasks[5]
+        orphan = tasks[6]
+
+        assert parent._id == 1
+        assert parent.start_date == datetime.date(2016, 2, 3)
+        assert parent.duration == 8
+        assert parent.complete == 12
+        assert parent.phase == project.phases[0]
+        assert parent.assigned_to == project.members[0]
+        assert len(parent.subtasks) == 2
+
+        assert orphan._id == 6
+        assert orphan.start_date == datetime.date(2016, 2, 1)
+        assert orphan.duration == 2
+        assert orphan.complete == 100
+        assert orphan.phase is None
+        assert orphan.assigned_to is None
+        assert len(orphan.subtasks) == 0
+
+        assert parent in orphan.relations.next_tasks
+        assert subtask_2 in subtask_1.relations.next_tasks
+        assert alone in subtask_2.relations.next_tasks
+        assert milestone in alone.relations.next_tasks
 
     @patch('pysync_redmine.repositories.redmine.ResourceWrapper')
     def should_load_phases(self, mock_wrapper):
         mock_wrapper.side_effect = lambda x, y: x
-
-        versions = dict()
-        for i in range(1, 3):
-            versions[i] = Mock()
-            versions[i].id = i
-            versions[i].name = 'v{}'.format(i)
-            versions[i].description = 'version number {}'.format(i)
-            versions[i].due_date = datetime.date(2016, 1, i)
-
-        self.source.version.filter.return_value = versions
-
+        project = self.repo.project
         self.repo.load_phases()
 
-        pars = {'project_id': self.project._id}
-        self.source.version.filter.assert_called_with(project_id=self.project._id)
+        self.source.version.filter.assert_called_with(
+                                                  project_id=self.project._id
+                                                  )
 
-        for i in range(1, 3):
-            phase = self.project.phases[i]
-            assert phase._id == i
-            assert phase.description == '{}. {}'.format(versions[i].name,
-                                                        versions[i].description)
-            assert phase.due_date == versions[i].due_date
-
-    def should_load_tasks(self):
-        issues = []
-        for i in range(0, 2):
-            issue = Mock()
-            issue.id = i
-            issue.subject = 'description {}'.format(i)
-            issues.append(issue)
-
-        self.source.issue.filter.return_value = issues
+        phase = project.phases[0]
+        assert phase._id == 0
+        assert phase.description == 'PHA. Phase description'
+        assert phase.due_date == datetime.date(2016, 2, 15)
 
     def should_insert_member(self):
         member = Member(self.project, 'user_key',
@@ -257,7 +273,7 @@ class A_RedmineRepo:
         main_task.description = 'Final description'
         main_task.start_date = datetime.date(2016, 1, 5)
         main_task.duration = 3
-        main_task.complete = 100
+        main_task.complete = 80
         main_task.assigned_to = member
         main_task.phase = phase
         main_task.parent = parent
@@ -277,7 +293,7 @@ class A_RedmineRepo:
             'subject': 'Final description',
             'start_date': main_task.start_date,
             'due_date': datetime.date(2016, 1, 7),
-            'done_ratio': 100,
+            'done_ratio': 80,
             'fixed_version_id': phase._id,
             'assigned_to_id': member._id,
             'parent_issue_id': parent._id
