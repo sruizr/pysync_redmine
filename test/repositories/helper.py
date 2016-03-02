@@ -44,7 +44,7 @@ def load_tasks_for_testing(project):
         task_descriptions = ['Task with subtasks', 'Subtask 1', 'Subtask 2',
                     'Task without subtasks', 'Milestone', 'Task without phase']
         start_dates = [date(2016, 2, 3), date(2016, 2, 3), date(2016, 2, 10),
-                        date(2016, 2, 15), date(2016, 2, 16), date(2016, 2, 1)]
+                        date(2016, 2, 15), date(2016, 2, 17), date(2016, 2, 1)]
         durations = [8, 5, 3, 1, 0, 2]
         completes = [61, 69, 50, 0, 0, 100]
 
@@ -93,7 +93,7 @@ def load_relations_for_testing(project):
     tasks[6].relations.add_next(tasks[1])
     tasks[2].relations.add_next(tasks[3])
     tasks[3].relations.add_next(tasks[4])
-    tasks[4].relations.add_next(tasks[5])
+    tasks[4].relations.add_next(tasks[5], 1)
 
 
 def get_issue_description():
@@ -161,7 +161,7 @@ def get_mock_source_redmine():
                      due_date=date(2016, 2, 9),
                      assigned_to_id=1,
                      done_ratio=12,
-                     description=get_issue_description(),
+                     description=None,
                      parent_issue_id=1, fixed_version_id=0)
     sub_issue2 = Mock(id=3, subject='Subtask 2',
                      start_date=date(2016, 2, 10),
@@ -191,12 +191,32 @@ def get_mock_source_redmine():
                             done_ratio=100,
                             description=None,
                             parent_issue_id=None, fixed_version_id=None)
-    redmine.issue.filter.return_value = [parent_issue, sub_issue1,
-                                sub_issue2, milestone, orphan, alone_task]
+    redmine.issue.filter.return_value = [
+                        parent_issue, sub_issue1, sub_issue2, milestone,
+                        orphan, alone_task
+                        ]
 
-    relation = Mock(issue_id=1, issue_to_id=3, relation_type='precedes',
-                    delay=1)
-    redmine.relation.filter.return_value = [relation]
+    relations_attrs = [
+            {'id': 1, 'issue_id': 6, 'issue_to_id': 1,
+                'relation_type': 'precedes', 'delay': 0},
+            {'id': 2, 'issue_id': 2, 'issue_to_id': 3,
+                'relation_type': 'precedes', 'delay': 0},
+            {'id': 3, 'issue_id': 3, 'issue_to_id': 4,
+                'relation_type': 'precedes', 'delay': 0},
+            {'id': 4, 'issue_id': 4, 'issue_to_id': 5,
+                'relation_type': 'precedes', 'delay': 1}
+            ]
+    relations = [Mock(**pars) for pars in relations_attrs]
+
+    def get_relations(issue_id):
+        result = []
+        for relation in relations:
+            if (relation.issue_id == issue_id or
+                    relation.issue_to_id == issue_id):
+                result.append(relation)
+        return result
+
+    redmine.issue_relation.filter.side_effect = get_relations
 
     return redmine
 

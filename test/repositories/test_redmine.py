@@ -156,6 +156,21 @@ class A_RedmineRepo:
         assert alone in subtask_2.relations.next_tasks
         assert milestone in alone.relations.next_tasks
 
+        empty_token_tasks = [parent, subtask_1, alone, milestone, orphan]
+        for task in empty_token_tasks:
+            assert not task.inputs, "Failed task {}, it has inputs".format(
+                                                            task.description)
+            assert not task.outputs, "Failed task {}, it has outputs".format(
+                                                            task.description)
+
+        assert len(subtask_2.inputs) == 2
+        assert len(subtask_2.outputs) == 2
+        assert subtask_2.inputs[0].path(project.tokens) == ['1', '2', '3']
+        assert subtask_2.inputs[1].path(project.tokens) == ['1', '2', '4']
+        assert subtask_2.outputs[0].path(project.tokens) == ['1', '5']
+        assert subtask_2.outputs[1].path(project.tokens) == ['6']
+
+
     @patch('pysync_redmine.repositories.redmine.ResourceWrapper')
     def should_load_phases(self, mock_wrapper):
         mock_wrapper.side_effect = lambda x, y: x
@@ -312,43 +327,33 @@ class A_RedmineRepo:
         assert not self.source.issue_relation.delete.called
 
     def should_update_tasks_with_removed_next_tasks(self):
+
         load_base(self.project)
         main_task = self.project.tasks[6]
-        next_task = self.project.tasks[3]
+        next_task = self.project.tasks[1]
 
-        mock_relation = Mock()
-        mock_relation.id = 1000
-        mock_relation.issue_id = main_task._id
-        mock_relation.issue_to_id = next_task._id
-        mock_relation.relation_type = 'precedes'
-        self.source.issue_relation.filter.return_value = [mock_relation]
+        # Remove issue_relation with id=1
+        main_task.relations.next_tasks.pop(next_task)
 
         self.repo.update_task(main_task)
 
-        self.source.issue_relation.delete.assert_called_with(mock_relation.id)
+        self.source.issue_relation.delete.assert_called_with(1)
 
     def should_update_tasks_with_changed_delays(self):
         load_base(self.project)
         main_task = self.project.tasks[6]
         next_task = self.project.tasks[1]
-        main_task.relations.add_next(next_task, 1)
 
-        mock_relation = Mock()
-        mock_relation.id = 1000
-        mock_relation.issue_id = main_task._id
-        mock_relation.issue_to_id = next_task._id
-        mock_relation.relation_type = 'precedes'
-        mock_relation.delay = 0
-        self.source.issue_relation.filter.return_value = [mock_relation]
-
+        # changed delay from 0 to 3
+        main_task.relations.next_tasks[next_task] = 3
         self.repo.update_task(main_task)
 
-        self.source.issue_relation.delete.assert_called_with(mock_relation.id)
+        self.source.issue_relation.delete.assert_called_with(1)
         pars = {
             'issue_id': main_task._id,
             'issue_to_id': next_task._id,
             'relation_type': 'precedes',
-            'delay': 1
+            'delay': 3
             }
         self.source.issue_relation.create.assert_called_with(
                                                         **pars)

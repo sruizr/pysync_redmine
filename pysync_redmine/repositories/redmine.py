@@ -8,6 +8,7 @@ from pysync_redmine.domain import (Repository,
                                    Calendar,
                                    StringTree)
 import getpass
+import re
 import pdb
 
 
@@ -76,7 +77,7 @@ class RedmineRepo(Repository):
             task.start_date = issue.start_date
             task.duration = self.project.calendar.get_duration(issue.start_date,
                                                        issue.due_date)
-            # pdb.set_trace()
+
             if issue.assigned_to_id is not None:
                 task.assigned_to = self.project.members[issue.assigned_to_id]
             if issue.fixed_version_id is not None:
@@ -84,12 +85,73 @@ class RedmineRepo(Repository):
             task.complete = issue.done_ratio
             tasks[task._id] = task
 
+            if issue.description:
+                task.inputs, task.outputs = self._parse_description(
+                                                            issue.description)
+
         for issue in issues:
+            task = tasks[issue.id]
             if issue.parent_issue_id is not None:
-                tasks[issue.id].parent = tasks[issue.parent_issue_id]
+                task.parent = tasks[issue.parent_issue_id]
 
-
+            relations = self.source.issue_relation.filter(issue_id=issue.id)
+            for relation in relations:
+                if (relation.issue_id == issue.id and
+                        relation.relation_type == 'precedes'):
+                    task.relations.add_next(tasks[relation.issue_to_id],
+                                                      relation.delay)
             task._snap()
+
+    def _parse_description(self, description):
+        def add_path(cont, path):
+            if cont is not None and path:
+                node = self.project.tokens.add_node(path)
+                cont.append(node)
+
+        def get_token(line):
+            level = 0
+            item = None
+            for i in range(0, len(line)):
+                if line[i] == '*':
+                    level += 1
+                elif line[i] == ' ' and level > 0:
+                    item = line[i+1:]
+                    break
+            if item:
+                if level == 1:
+                    m = re.search('\[\[(.+?)\]\]', item)
+                    if m:
+                        item = m.group(1)
+            return item, level
+
+        inputs = []
+        outputs = []
+        lines = description.split('\n')
+        container = None
+        path = []
+        for line in lines:
+            if not line:
+                add_path(container, path)
+                path = []
+            elif line == 'h3. Inputs':
+                container = inputs
+                path = []
+            elif line == 'h3. Outputs':
+                container = outputs
+                path = []
+            elif line == '------':
+                break
+            elif line[0] == '*':
+                item, level = get_token(line)
+                if level <= len(path):
+                    add_path(container, path)
+                    cut = len(path) - level - 1
+                    path = path[0:cut]
+                path.append(item)
+            else:
+                add_path(container, path)
+                path = []
+        return inputs, outputs
 
     def load_members(self):
         roles = self.source.role.all()
