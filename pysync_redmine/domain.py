@@ -12,10 +12,10 @@ class StringTree:
         if isinstance(name, str):
             name = [name]
         if len(name) == 1:
-            self.name = name[0]
+            self.name = str(name[0])
             self.parent = parent
         else:
-            self.name = name[-1]
+            self.name = str(name[-1])
             self.parent = StringTree(name[0:-1], parent)
 
     @property
@@ -222,7 +222,7 @@ class Task(Persistent):
         self.duration = None
         self.complete = None
         self._assigned_to = None
-        self._phase = None
+        self.phase = phase
 
         self._parent = None
         self.subtasks = []
@@ -247,7 +247,8 @@ class Task(Persistent):
     @phase.setter
     def phase(self, value):
         self._phase = value
-        value.tasks.append(self)
+        if value is not None:
+            value.tasks.append(self)
 
     @property
     def parent(self):

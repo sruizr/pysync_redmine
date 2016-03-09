@@ -13,8 +13,6 @@ from datetime import date
 
 
 def load_project_base(project):
-        mock_repository = Mock()
-        project.repository = mock_repository
         load_phases_for_testing(project)
         load_members_for_testing(project)
         load_tasks_for_testing(project)
@@ -40,6 +38,7 @@ def load_members_for_testing(project):
             member.project.members[i] = member
             member._snap()
 
+
 def load_tasks_for_testing(project):
         task_descriptions = ['Task with subtasks', 'Subtask 1', 'Subtask 2',
                     'Task without subtasks', 'Milestone', 'Task without phase']
@@ -48,6 +47,7 @@ def load_tasks_for_testing(project):
         durations = [8, 5, 3, 1, 0, 2]
         completes = [61, 69, 50, 0, 0, 100]
 
+        tasks = project.tasks
         for i in range(0, 6):
                 task = Task(project)
                 task.description = task_descriptions[i]
@@ -55,9 +55,8 @@ def load_tasks_for_testing(project):
                 task.duration = durations[i]
                 task.complete = completes[i]
                 task._id = i + 1
-                task.save()
+                tasks[i+1] = task
 
-        tasks = project.tasks
         for i in range(1, 5):
             tasks[i].phase = project.phases[0]
 
@@ -69,7 +68,8 @@ def load_tasks_for_testing(project):
             tasks[i].assigned_to_id = members[i-1]
 
         for i in range(1, 7):
-          tasks[i].save()
+            tasks[i]._snap()
+
 
 def load_tokens_for_testing(project):
     tokens = project.tokens
@@ -221,7 +221,7 @@ def get_mock_source_redmine():
     return redmine
 
 
-def get_mock_source_gantt():
+def get_fake_source_gantt():
     source = ET.Element('project', {'name': 'example'})
 
     roles = ET.SubElement(source, 'roles')
@@ -289,4 +289,5 @@ def get_mock_source_gantt():
                   'task-id': '3', 'resource-id': '1', 'function': '2',
                   'responsible': 'false'})
 
+    # ET.dump(source)
     return source

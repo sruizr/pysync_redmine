@@ -150,6 +150,147 @@ class GanttRepo(Repository):
         for task in project.tasks.values():
             task._snap()
 
+    def insert_member(self, member):
+        resources = self.source.find('./resources')
+        ids = [int(resource.attrib['id']) for resource in resources]
+        new_id = 0
+        if ids:
+            new_id = max(ids) + 1
+
+        function_name = list(member.roles)[0]
+        roles = self.source.find("./roles")
+        ids = [int(role.attrib['id']) for role in roles]
+        new_role_id = 0
+        if ids:
+            new_role_id = max(ids) + 1
+
+        role_id = None
+        for role in roles[0]:
+            if function_name == role.attrib['name']:
+                role_id = int(role.attrib['id'])
+                break
+
+        if role_id is None:
+            ET.SubElement(roles, 'role', {'id': str(new_role_id),
+                                   'name': function_name})
+            role_id = new_id
+
+        attributes = {'id': str(new_id), 'name': member.key,
+                                    'function': str(role_id)}
+        ET.SubElement(resources, 'resource',
+                               attributes)
+        member._id = new_id
+
+    def insert_phase(self, phase):
+        new_id = self._get_new_task_id()
+        duration = 0
+        start_date = phase.due_date
+        for task in phase.tasks:
+            if task.start_date < start_date:
+                start_date = task.start_date
+        duration = self.project.calendar.get_duration(
+                                                    start_date,
+                                                    phase.due_date
+                                                    )
+
+        phase_name = '{}. {}'.format(phase.key, phase.description)
+
+        attributes = {'id': str(new_id), 'name': phase_name,
+                        'duration': str(duration), 'color': '#000000',
+                        'meeting': 'false', 'start': start_date.isoformat(),
+                        'complete': '0', 'expand': 'true'}
+        tasks = self.source.find('./tasks')
+        ET.SubElement(tasks, 'task', attributes)
+
+        phase._id = new_id
+
+    def insert_task(self, task):
+        main_filter = './tasks'
+        if task.phase:
+            phase_filter = main_filter + '/task[@id="{}"]'.format(
+                                                                task.phase._id)
+        if task.parent:
+            parent_filter = phase_filter + '//task[@id="{}"]'.format(
+                                                            task.parent._id)
+        parent = self.source.find(parent_filter)
+        if not parent:
+            raise ValueError
+
+        new_id = self._get_new_task_id()
+        attributes = {
+                'id': str(new_id), 'name': task.description,
+                'color': '#8cb6ce', 'meeting': 'false',
+                'start': task.start_date.isoformat(),
+                'duration': str(task.duration), 'complete': str(task.complete),
+                'expand': 'true'
+                        }
+        ET.SubElement(parent, 'task', attributes)
+        task._id = new_id
+
+        if task.assigned_to:
+            member = self.source.find('./resources/resource[@id="{}"]'.format(
+                                                    task.assigned_to._id))
+            function = member.attrib['function']
+
+            allocations = self.source.find('./allocations')
+            attributes = {
+                                'task-id': str(task._id),
+                                'resource-id': str(task.assigned_to._id),
+                                'function': function, 'responsible': 'true',
+                                'load': '100.0'
+                                }
+            ET.SubElement(allocations, 'allocation', attributes)
+
+        # Updating durations of phases and parent tasks
+
+    def update_task(self, task):
+
+        task_filter = './tasks//task[@id="{}"]'.format(task._id)
+        task_element = self.source.find(task_filter)
+        source_next_tasks = self.source.findall(
+                           task_filter + '/depend'
+                            )
+        source_next_task = {
+                        int(task.attrib['id']): int(task.attrib['difference'])
+                        for task in source_next_tasks
+                        }
+
+        domain_next_tasks = task.relations.next_tasks
+
+        for next_task, delay in domain_next_tasks.items():
+            if next_task._id not in source_next_task:
+                attributes = {
+                                    'id': str(next_task._id), 'type': '2',
+                                    'difference': str(delay),
+                                    'hardness': 'Strong'
+                                    }
+                ET.SubElement(task_element, 'depend', attributes)
+            elif delay != source_next_task[next_task._id]:
+                depend = self.source.find(
+                        task_filter+'/depend[@id="{}"]'.format(next_task._id)
+                        )
+                depend.attrib['difference'] = str(delay)
+
+        domain_next_task_ids = [
+                                    next_task._id
+                                    for next_task in domain_next_tasks.keys()
+                                            ]
+        for next_task_id, delay in source_next_task.items():
+            if next_task_id not in domain_next_task_ids:
+                depend = self.source.find(
+                        task_filter+'/depend[@id="{}"]'.format(next_task_id)
+                        )
+                task_element.remove(depend)
+
+    def _get_new_task_id(self):
+        tasks = self.source.findall('./tasks//task')
+        ids = [int(task.attrib['id']) for task in tasks]
+
+        new_id = 0
+        if ids:
+            new_id = max(ids) + 1
+        return new_id
+
     def _get_tokens(self, token_string):
         tokens = token_string.split(',')
         result = []
