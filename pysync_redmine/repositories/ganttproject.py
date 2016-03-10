@@ -245,6 +245,73 @@ class GanttRepo(Repository):
 
     def update_task(self, task):
 
+        fields = {}
+        before_fields = task.snapshot
+        after_fields = task.__dict__
+
+        for key, value in after_fields.items():
+            if before_fields[key] != value:
+                fields[key] = value
+
+        attributes = {}
+        if fields:
+            if 'description' in fields:
+                attributes['name'] = fields['description']
+            if 'start_date' in fields:
+                attributes['start'] = fields['start_date'].isoformat()
+            if 'duration' in fields:
+                attributes['duration'] = str(fields['duration'])
+            if 'complete' in fields:
+                attributes['complete'] = str(fields['complete'])
+            if '_parent' in fields or '_phase' in fields:
+                self._move_task(task)
+            if '_assigned_to' in fields:
+                self._assign_task(task, True)
+            if 'inputs' in fields:
+                self._update_inputs(task)
+                # To be done
+            if 'outputs' in fields:
+                self._update_outputs(task)
+
+            task_element = self.source.find('./tasks//task[@id="{}"]'.format(
+                                          task._id))
+            for key, value in attributes.items():
+                task_element.attrib[key] = value
+
+        self._update_links(task)
+        task._snap()
+
+    def _assign_task(self, task, responsible):
+        allocations = self.source.find('./allocations')
+        updated = False
+        responsible_value = 'true' if responsible else 'false'
+
+        allocation_filter = './allocations/allocation[@task-id="{}"][@responsible="{}"]'.format(task._id, responsible_value)
+        allocation = self.source.find(allocation_filter)
+
+        if task.assigned_to is None:
+            if allocation:
+                allocations.remove(allocation)
+        else:
+            if allocation is None:
+                attributes = {
+                    'task-id': str(task._id),
+                    'resource-id': str(task.assigned_to._id),
+                    'function':'1',
+                    'responsible': responsible_value
+                    }
+                ET.SubElement(allocations, 'allocation', attributes)
+            else:
+                allocation.attrib['resource-id'] = str(task.assigned_to._id)
+
+    def _update_inputs(self, task):
+        pass
+
+    def _update_outputs(self, task):
+        pass
+
+
+    def _update_links(self, task):
         task_filter = './tasks//task[@id="{}"]'.format(task._id)
         task_element = self.source.find(task_filter)
         source_next_tasks = self.source.findall(

@@ -194,6 +194,47 @@ class A_GanttRepo:
         #                                               new_task.duration)
         # assert phase.due_date == due_date
 
+    def should_update_task_with_new_data(self):
+        load_project_base(self.project)
+        self.project.repository = self.repo
+
+        task = self.project.tasks[1]
+
+        task.description = 'Description is changed'
+        task.start_date = datetime.date(2016, 1, 1)
+        task.duration = 8
+        task.complete = 11
+
+        task.save()
+
+        task_element = self.repo.source.find('./tasks//task[@id="1"]')
+        should_be = {
+                        'name': task.description, 'start': '2016-01-01',
+                        'duration': '8', 'complete': '11', 'meeting': 'false',
+                        'expand': 'true', 'id': '1', 'color': '#8cb6ce'
+                                 }
+
+        assert task_element.attrib == should_be
+
+    def should_update_task_with_new_responsible(self):
+        load_project_base(self.project)
+        self.project.repository = self.repo
+
+        member = self.project.members[2]
+        task = self.project.tasks[2]
+        task.assigned_to = member
+
+        task.save()
+        allocation_filter = './allocations/allocation[@task-id="2"][@resource-id="2"]'
+        allocation = self.repo.source.find(allocation_filter)
+        assert allocation is not None, "New allocation is not created"
+        allocation_filter = './allocations/allocation[@task-id="2"][@resource-id="1"]'
+        allocation = self.repo.source.find(allocation_filter)
+        assert allocation is None, "Old allocation is not removed"
+
+
+
+
     def should_update_task_with_new_next_steps(self):
         load_project_base(self.project)
         self.project.repository = self.repo

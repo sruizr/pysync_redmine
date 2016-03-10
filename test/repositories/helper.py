@@ -244,23 +244,44 @@ def get_fake_source_gantt():
     ET.SubElement(taskproperties, 'taskproperty',
                             {'id': 'tpc1', 'name': 'outputs'})
 
-    phase = ET.SubElement(tasks, 'task', {'id': '0', 'name': 'PHA. Phase description',
-                   'start': '2016-02-03', 'duration': '9', 'complete': '48'})
-    parent = ET.SubElement(phase, 'task', {'id': '1', 'name': 'Task with subtasks',
-                   'start': '2016-02-03', 'duration': '8', 'complete': '61'})
-    subtask1 = ET.SubElement(parent, 'task', {'id': '2', 'name': 'Subtask 1',
-                   'start': '2016-02-03', 'duration': '5', 'complete': '69'})
-    subtask2 = ET.SubElement(parent, 'task', {'id': '3', 'name': 'Subtask 2',
-                   'start': '2016-02-10', 'duration': '3', 'complete': '50'})
-    alone_task = ET.SubElement(phase, 'task', {'id': '4',
-                       'name': 'Task without subtasks', 'start': '2016-02-15',
-                       'duration': '1', 'complete': '0'})
-    milestone = ET.SubElement(tasks, 'task', {'id': '5', 'name': 'Milestone',
-                              'start': '2016-02-16',
-                              'duration': '0', 'complete': '48',
-                              'meeting': True})
-    orphan_task = ET.SubElement(tasks, 'task', {'id': '6', 'name': 'Task without phase',
-                          'start': '2016-02-01', 'duration': '2', 'complete': '100'})
+    task_base = {'color': '#8cb6ce', 'expand': 'true', 'meeting': 'false'}
+    phase_base = {'color': '#000000', 'expand': 'true', 'meeting': 'false'}
+
+    phase = ET.SubElement(
+                            tasks, 'task', {
+                                **phase_base, 'id': '0',
+                                'name': 'PHA. Phase description',
+                                'start': '2016-02-03', 'duration': '9', 'complete': '48'})
+    parent = ET.SubElement(
+                    phase, 'task', {
+                        **task_base, 'id': '1', 'name': 'Task with subtasks',
+                        'start': '2016-02-03', 'duration': '8', 'complete': '61'})
+    subtask1 = ET.SubElement(
+                             parent, 'task', {
+                                **task_base, 'id': '2', 'name': 'Subtask 1',
+                                'start': '2016-02-03', 'duration': '5',
+                                'complete': '69'})
+    subtask2 = ET.SubElement(
+                             parent, 'task', {
+                                **task_base, 'id': '3', 'name': 'Subtask 2',
+                                'start': '2016-02-10', 'duration': '3',
+                                'complete': '50'})
+    alone_task = ET.SubElement(
+                               phase, 'task', {
+                                **task_base, 'id': '4',
+                                'name': 'Task without subtasks', 'start': '2016-02-15',
+                                'duration': '1', 'complete': '0'})
+    milestone = ET.SubElement(
+                              tasks, 'task', {
+                                  **task_base, 'id': '5', 'name': 'Milestone',
+                                  'start': '2016-02-16',
+                                  'duration': '0', 'complete': '48',
+                                  'meeting': True})
+    orphan_task = ET.SubElement(
+                                tasks, 'task', {
+                                    **task_base, 'id': '6',
+                                    'name': 'Task without phase', 'start': '2016-02-01',
+                                    'duration': '2', 'complete': '100'})
 
     #  Relations
     ET.SubElement(subtask1, 'depend', {'id': '3', 'difference': '0', 'type': '2', 'hardness': 'Strong'})

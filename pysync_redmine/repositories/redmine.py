@@ -255,7 +255,6 @@ class RedmineRepo(Repository):
         if (task.phase != task.snapshot['_phase'] and
                 task.phase is not None):
             fields['fixed_version_id'] = task.phase._id
-
         if fields:  # pending test
             self.source.issue.update(resource_id, **fields)
 
