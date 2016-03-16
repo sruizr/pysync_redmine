@@ -56,3 +56,4 @@ setup(
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
 )
+
