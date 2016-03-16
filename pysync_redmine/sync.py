@@ -76,4 +76,5 @@ def download(filename, url, user, password):
 
     syncronizer.deploy_to_ganttproject()
 
-
+if __name__ == '__main__':
+    sync()
