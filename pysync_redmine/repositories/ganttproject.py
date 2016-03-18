@@ -19,10 +19,13 @@ class GanttRepo(Repository):
 
     def open_source(self, **setup_pars):
 
-        self.setup_pars = setup_pars
-
         self.source = ET.parse(setup_pars['filename']).getroot()
         project_name = self.source.attrib['name']
+
+        self.setup_pars = setup_pars
+        if 'project_key' not in self.setup_pars:
+            self.setup_pars['project_key'] = project_name
+
         self.project = Project(project_name, self)
 
     def load_members(self):

@@ -365,4 +365,3 @@ class Calendar(Persistent):
     def get_start_date(self, duration, end_date):
         pass
 
-

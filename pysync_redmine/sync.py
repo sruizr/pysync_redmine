@@ -1,13 +1,6 @@
 import json
 import click
-import pysync_redmine.repositories as base
-from pysync_redmine.domain import (
-                                    RelationSet,
-                                    Task,
-                                    Member,
-                                    Phase,
-                                    Syncronizer
-                                    )
+from pysync_redmine.syncronizer import Syncronizer
 import pdb
 
 
@@ -26,10 +19,7 @@ def foo():
         raise(ValueError('Filename doesn t exist'))
 
     gantt.open_source(filename=filename)
-    tokens = url.split('/')
-    project_key = tokens.pop(-1)
-    tokens.pop(-1)
-    url = '/'.join(tokens)
+
 
     redmine.open_source(url=url, username=user, password=password,
                         project_key=project_key)
@@ -57,7 +47,7 @@ def upload(filename, url, user, password):
     syncronizer.add_ganttproject(filename)
 
     # pdb.set_trace()
-    syncronizer.deploy_to_redmine()
+    syncronizer.update_redmine()
 
 
 @sync.command()
@@ -74,7 +64,7 @@ def download(filename, url, user, password):
     syncronizer.add_ganttproject(filename)
     # pdb.set_trace()
 
-    syncronizer.deploy_to_ganttproject()
+    syncronizer.update_ganttproject()
 
 if __name__ == '__main__':
     sync()

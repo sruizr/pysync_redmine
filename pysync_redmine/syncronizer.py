@@ -1,4 +1,14 @@
+import pysync_redmine.repositories as base
+from pysync_redmine.domain import (
+                                    RelationSet,
+                                    Task,
+                                    Member,
+                                    Phase
+                                    )
+
+
 class Syncronizer:
+
     def __init__(self, sync_data=None):
         self.projects = None
         if not sync_data:
@@ -21,11 +31,32 @@ class Syncronizer:
 
         for repo_info in self.sync_data['repositories']:
             if (repo_info['setup_pars'] == repository.setup_pars) and (
-                                repo_info['class_key']== repository.class_key):
+                                repo_info['class_key'] == repository.class_key):
                 return
 
         pars = {'class_key': repository.class_key, 'setup_pars': repository.setup_pars}
         self.sync_data['repositories'].append(pars)
+
+    def add_redmine_project(self, url, username, password):
+        repository = base.redmine.RedmineRepo()
+        tokens = url.split('/')
+        project_key = tokens.pop(-1)
+        tokens.pop(-1)
+        url = '/'.join(tokens)
+
+        repository.open_source(
+                               url=url,
+                               project_key=project_key,
+                               username=username,
+                               password=password
+                               )
+        self.add_repository(repository)
+
+    def add_ganttproject(self, filename):
+        repository = base.ganttproject.GanttRepo()
+        repository.open_source(filename=filename)
+
+        self.add_repository(repository)
 
     def deploy(self, from_repo, to_repo):
         self.add_repository(from_repo)

@@ -312,3 +312,9 @@ def get_fake_source_gantt():
 
     # ET.dump(source)
     return source
+
+def get_fake_repo():
+    repo = Mock()
+    repo.project =
+
+    return repo

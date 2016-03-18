@@ -12,6 +12,7 @@ from pysync_redmine.domain import (
                                    StringTree
                                    )
 from pysync_redmine.sync import upload, download
+from pysync_redmine.syncronizer import Syncronizer
 import pdb
 
 
@@ -39,7 +40,7 @@ class A_SyncCommand:
         syncronizer.add_redmine_project.assert_called_with(
                                         'http://redmine.com/projects/example',
                                         'username', 'pass')
-        syncronizer.deploy_to_redmine.assert_called_with()
+        syncronizer.update_redmine.assert_called_with()
 
     @patch('pysync_redmine.sync.Syncronizer')
     def should_download_from_redmine_project_to_ganttfile(
@@ -61,7 +62,7 @@ class A_SyncCommand:
         assert result.exit_code == 0
         # pdb.set_trace()
         syncronizer.add_ganttproject.assert_called_with(file_name)
-        syncronizer.deploy_to_ganttproject.assert_called_with()
+        syncronizer.update_ganttproject.assert_called_with()
         syncronizer.add_redmine_project.assert_called_with(
                                         'http://redmine.com/projects/example',
                                         'username', 'pass')
